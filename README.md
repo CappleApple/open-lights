@@ -2,8 +2,6 @@
 
 Point, spot, and rectangular area lighting for Minecraft Forge 1.20.1. Open Lights includes a handheld flashlight, placeable light sources, and a client API for other mods.
 
-The renderer uses Forge render events, scene depth, and its own OpenGL shaders. It has no Veil or Flashier Flashlights dependency.
-
 ## Requirements
 
 - Minecraft 1.20.1
