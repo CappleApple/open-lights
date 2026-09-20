@@ -1,0 +1,432 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "gui_light": "front",
+  "textures": {
+    "particle": "minecraft:block/black_concrete",
+    "grip": "minecraft:block/black_concrete",
+    "metal": "minecraft:block/iron_block",
+    "lens": "minecraft:block/sea_lantern",
+    "switch": "minecraft:block/redstone_block"
+  },
+  "elements": [
+    {
+      "name": "handle",
+      "from": [
+        6,
+        6,
+        4
+      ],
+      "to": [
+        10,
+        10,
+        14.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "name": "head",
+      "from": [
+        5,
+        5,
+        0
+      ],
+      "to": [
+        11,
+        11,
+        5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "name": "metal_bezel",
+      "from": [
+        4.75,
+        4.75,
+        -1.5
+      ],
+      "to": [
+        11.25,
+        11.25,
+        0.25
+      ],
+      "faces": {
+        "north": {
+          "texture": "#metal"
+        },
+        "south": {
+          "texture": "#metal"
+        },
+        "east": {
+          "texture": "#metal"
+        },
+        "west": {
+          "texture": "#metal"
+        },
+        "up": {
+          "texture": "#metal"
+        },
+        "down": {
+          "texture": "#metal"
+        }
+      }
+    },
+    {
+      "name": "inner_bezel",
+      "from": [
+        5.25,
+        5.25,
+        -1.7
+      ],
+      "to": [
+        10.75,
+        10.75,
+        -1.45
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "name": "lens",
+      "from": [
+        5.75,
+        5.75,
+        -1.78
+      ],
+      "to": [
+        10.25,
+        10.25,
+        -1.6
+      ],
+      "faces": {
+        "north": {
+          "texture": "#lens"
+        },
+        "south": {
+          "texture": "#lens"
+        },
+        "east": {
+          "texture": "#lens"
+        },
+        "west": {
+          "texture": "#lens"
+        },
+        "up": {
+          "texture": "#lens"
+        },
+        "down": {
+          "texture": "#lens"
+        }
+      }
+    },
+    {
+      "name": "front_grip_ring",
+      "from": [
+        5.75,
+        5.75,
+        7
+      ],
+      "to": [
+        10.25,
+        10.25,
+        7.75
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "name": "rear_grip_ring",
+      "from": [
+        5.75,
+        5.75,
+        10
+      ],
+      "to": [
+        10.25,
+        10.25,
+        10.75
+      ],
+      "faces": {
+        "north": {
+          "texture": "#grip"
+        },
+        "south": {
+          "texture": "#grip"
+        },
+        "east": {
+          "texture": "#grip"
+        },
+        "west": {
+          "texture": "#grip"
+        },
+        "up": {
+          "texture": "#grip"
+        },
+        "down": {
+          "texture": "#grip"
+        }
+      }
+    },
+    {
+      "name": "tail_cap",
+      "from": [
+        5.7,
+        5.7,
+        14.25
+      ],
+      "to": [
+        10.3,
+        10.3,
+        15.2
+      ],
+      "faces": {
+        "north": {
+          "texture": "#metal"
+        },
+        "south": {
+          "texture": "#metal"
+        },
+        "east": {
+          "texture": "#metal"
+        },
+        "west": {
+          "texture": "#metal"
+        },
+        "up": {
+          "texture": "#metal"
+        },
+        "down": {
+          "texture": "#metal"
+        }
+      }
+    },
+    {
+      "name": "power_switch",
+      "from": [
+        7,
+        10,
+        5.5
+      ],
+      "to": [
+        9,
+        10.65,
+        6.8
+      ],
+      "faces": {
+        "north": {
+          "texture": "#switch"
+        },
+        "south": {
+          "texture": "#switch"
+        },
+        "east": {
+          "texture": "#switch"
+        },
+        "west": {
+          "texture": "#switch"
+        },
+        "up": {
+          "texture": "#switch"
+        },
+        "down": {
+          "texture": "#switch"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        25,
+        -135,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        2,
+        0
+      ],
+      "scale": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        8,
+        0
+      ],
+      "translation": [
+        0,
+        2,
+        -1
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        8,
+        0
+      ],
+      "translation": [
+        0,
+        2,
+        -1
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        1,
+        -2
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        1,
+        -2
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    }
+  }
+}

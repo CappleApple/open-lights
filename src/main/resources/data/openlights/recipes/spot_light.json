@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "openlights:point_light"
+    },
+    {
+      "item": "minecraft:spyglass"
+    },
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "result": {
+    "item": "openlights:spot_light"
+  }
+}

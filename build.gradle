@@ -1,0 +1,63 @@
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle'
+    id 'org.spongepowered.mixin'
+}
+group = 'com.cappleapple.openlights'
+version = '1.1.1'
+base.archivesName = 'openlights-1.20.1'
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.withSourcesJar()
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+}
+repositories { mavenCentral(); maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
+mixin { add sourceSets.main, 'openlights.refmap.json'; config 'openlights.mixins.json' }
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.named('processResources', ProcessResources) {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') { expand version: project.version }
+}
+tasks.named('jar', Jar) {
+    from('LICENSE', 'THIRD_PARTY_NOTICES.md')
+    from('licenses') { into 'licenses' }
+    manifest.attributes('MixinConfigs': 'openlights.mixins.json')
+    finalizedBy 'reobfJar'
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('test', Test) { useJUnitPlatform() }
+
+
+
+tasks.named('compileJava', JavaCompile) {
+    // Mixin refmaps describe all mixins, so incremental partial compilation is unsafe.
+    options.incremental = false
+}
+
+tasks.register('verifyModJar') {
+    dependsOn tasks.named('reobfJar')
+    doLast {
+        def artifact = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        new java.util.zip.ZipFile(artifact).withCloseable { zip ->
+            if (zip.getEntry('openlights.refmap.json') == null) {
+                throw new GradleException('Missing Mixin refmap in ' + artifact.name)
+            }
+            if (zip.entries().toList().any { it.name.contains('/smoke/') }) {
+                throw new GradleException('Development smoke code leaked into ' + artifact.name)
+            }
+        }
+    }
+}
+tasks.named('build') { dependsOn tasks.named('verifyModJar') }
+
+
+
+tasks.named('sourcesJar', Jar) {
+    from('LICENSE', 'THIRD_PARTY_NOTICES.md')
+    from('licenses') { into 'licenses' }
+}

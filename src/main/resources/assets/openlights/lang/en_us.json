@@ -1,0 +1,14 @@
+{
+  "item.openlights.flashlight": "Flashlight",
+  "block.openlights.point_light": "Point Light",
+  "block.openlights.spot_light": "Spot Light",
+  "block.openlights.area_light": "Area Light",
+  "message.openlights.flashlight_on": "Flashlight on",
+  "message.openlights.flashlight_off": "Flashlight off",
+  "message.openlights.light_on": "Light on",
+  "message.openlights.light_off": "Light off",
+  "message.openlights.range": "Light range: %s blocks",
+  "tooltip.openlights.on": "On",
+  "tooltip.openlights.off": "Off",
+  "tooltip.openlights.flashlight_use": "Right-click to toggle"
+}

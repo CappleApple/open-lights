@@ -1,0 +1,17 @@
+.gradle/
+build/
+run/
+run-*/
+.research/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+logs/
+libs/
+
+
+**/.research/
+**/build/
+**/.gradle/

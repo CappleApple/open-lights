@@ -1,0 +1,16 @@
+{
+  "inner": {
+    "color": "#FFF0CC",
+    "intensity": 1.8,
+    "angleDegrees": 20.0
+  },
+  "outer": {
+    "color": "#88AAFF",
+    "intensity": 0.4,
+    "angleDegrees": 50.0
+  },
+  "fogDensity": 0.5,
+  "dust": {
+    "rate": 12.0
+  }
+}
