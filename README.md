@@ -60,7 +60,7 @@ Client settings are stored in `config/openlights-client.toml`.
 
 ## For developers
 
-Use immutable light definitions with persistent handles or submit lights during `CollectLightsEvent`. Positions use world coordinates with double precision. See the [API contract](docs/api.md) for construction, ownership, and lifecycle rules.
+Use immutable light definitions with persistent handles or submit lights during `CollectLightsEvent`. Positions use world coordinates with double precision. See the [API docs](docs/api.md) for construction, ownership, and lifecycle rules.
 
 ## Building
 
