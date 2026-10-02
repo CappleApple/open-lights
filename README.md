@@ -1,6 +1,8 @@
 # Open Lights
 
-Point, spot, and rectangular area lighting for Minecraft Forge 1.20.1. Open Lights includes a handheld flashlight, placeable light sources, and a client API for other mods.
+Point, spot, and rectangular area lighting for Minecraft Forge 1.20.1, with cached diffuse GI and experimental replacement of world lightmap shading. Open Lights includes a handheld flashlight, placeable light sources, and a client API for other mods.
+
+The separate [NeoForge 1.21.1 build](neoforge/README.md) has its own sources, Java 21 build and verification checklist. See the [Forge changes since 1.1.1](docs/forge-changes-since-1.1.1.md) for the cumulative update notes.
 
 ## Requirements
 
@@ -8,7 +10,9 @@ Point, spot, and rectangular area lighting for Minecraft Forge 1.20.1. Open Ligh
 - Forge 47.4.10 or later in the 47.x series
 - Java 17
 
-Install the mod on clients and the server. Rendering runs on clients; item and block states are synchronized by the server.
+Install on the client for automatic client-only lighting on servers without Open Lights. Colored world lighting, aggregation, optional GI, both lighting styles and video settings remain available. Install on both sides to also use flashlights, placeable lights and synchronized beam profiles. Native items are hidden and stale creative submissions are blocked on unsupported servers.
+
+GI is disabled by default in new configurations. Cached direct lighting remains enabled. Set `[globalIllumination].enabled = true` to enable indirect bounce lighting; existing saved settings are preserved.
 
 ## Lights
 
@@ -25,15 +29,25 @@ For a placed light, right-click with an empty hand to toggle it. Sneak-right-cli
 
 ## Rendering and limits
 
+- Block lighting defaults to the Open Lights appearance: cached radial falloff, directional surface shading and voxel shadows. Select Minecraft style in Video Settings for the previous propagated appearance.
+- First-person hands and held items receive the cached environment's light color in either cached style.
+- Nearby emissive blocks pool light to extend its reach with diminishing returns. A 3×3×3 glowstone cluster lights a larger area than one block without multiplying peak brightness. Aggregate lighting is cached, follows opaque barriers, and filters through translucent textures.
+- Aggregate propagation and texture construction run on a background worker. The client captures material snapshots and uploads finished sections under separate budgets. Ordinary edits queue follow-up work without restarting the active calculation; unchanged source channels are reused, and only changed combined bricks upload.
 - Point, spot, and area lights use six, one, and four shadow views respectively.
 - Shadows follow cached block shapes. Entity models do not currently cast these shadows.
 - Clear glass transmits light; stained glass colors transmitted light. Tinted glass blocks light. Water and ice have separate transmission properties.
 - Volumetric lighting renders at a configurable resolution and sample count.
-- Scene geometry is cached and refreshed incrementally. Stationary lights reuse shadow maps until their definition or cached geometry changes.
+- Scene geometry and light probes refresh when their inputs change or the camera exposes new cells. Stationary lights reuse shadow maps until their definition or cached geometry changes.
+- Diffuse GI uses cached six-ray probes near the camera and a coarse cache across render distance, updated under shared work and time limits. API lights and texture-colored block light can contribute.
+- Emitting textures and optional emissive masks supply block-light colors. Translucent block textures filter light passing through them; resource-pack reloads refresh the caches.
+- `lightingMode = "CACHED"` shades block light at one-block resolution across loaded render distance, with nearby and coarse distant skylight caches. Minecraft still computes gameplay light levels and the lightmap color palette. `ADDITIVE` keeps vanilla surface lighting.
+- Cached world shading stays active during movement, reloads, and cache rebuilds. A coarse skylight estimate covers missing samples while colored block lighting fills in.
 
-The renderer currently processes at most eight lights, four lights with shadows, and 32 nearby transparent-medium regions per frame. Nearby lights receive priority. Sources and lit surfaces fade out at the edge of a 32-block camera-centered scene cache. Shadow updates may lag block changes while the scene cache processes its work budget.
+The analytic renderer processes at most eight lights, four lights with shadows, and 32 transparent-medium regions per frame. Nearby lights receive priority. Point, spot, and area lights remain visible across Minecraft render distance; each source keeps its configured reach and falloff. Shadow geometry is cached around selected sources, alongside the nearby scene, under the existing scan budget. Cached block/sky lighting has separate budgets. Shadow and GI updates may lag moving lights or block changes while their caches process work.
 
-Tested with Embeddium 0.3.31 and Oculus 1.8.0 using Complementary Reimagined r5.9.3. No manual Open Lights compatibility switch is needed. Other shader packs, OptiFine, and Distant Horizons are untested. Added lighting is composited after the shader pack; it does not participate in the pack's exposure, TAA, material lighting, or internal bloom. The integration uses Forge hooks and the public Iris/Oculus shadow-pass API.
+Cached replacement is experimental: coarse distant GI can miss small bounce surfaces, and interpolation can leak illumination through thin walls. Transparency, fog, and custom fullbright materials are approximated by the final scene composite. The sky and first-person hand keep their original rendering. This is not a replacement for Minecraft's light propagation engine or a physically based path tracer. See [lighting modes, performance settings, and limitations](docs/lighting.md).
+
+Cached replacement was checked with the vanilla renderer. See [backport validation](docs/verification-1.8.1.md) for the current packaged-client checks. Additive GI was checked with Embeddium 0.3.31 and Oculus 1.8.0 using Complementary Reimagined r5.9.3. A running shader pack automatically selects additive rendering, including GI; Open Lights does not replace the pack's material lighting. Other shader packs, OptiFine, and Distant Horizons are untested. Added lighting is composited after the shader pack; it does not participate in the pack's exposure, TAA, material lighting, or internal bloom. The integration uses Forge hooks and the public Iris/Oculus API.
 
 ## Beam profiles
 
@@ -45,18 +59,24 @@ See the [profile guide and example datapack](docs/beam-profiles.md). The client 
 
 Client settings are stored in `config/openlights-client.toml`.
 
+In vanilla Video Settings, open **Open Lights** to choose the block-lighting style, viewing distance, aggregation, block exposure, source-cache memory and update budgets. **Lighting update speed** offers Economy, Balanced, Fast and Rapid presets; higher settings spend more client time preparing and applying worker results. Lighting distance follows Minecraft render distance by default; lower values limit analytic-light visibility without changing source reach, world lighting or GI. Menus supplied by other rendering mods may require editing the TOML settings instead.
+
 | Key | Default | Range |
 | --- | --- | --- |
 | `enabled` | `true` | Boolean |
 | `beamDust` | `true` | Boolean; local particle override |
 | `maxLights` | `8` | 1–8 |
+| `lightRenderDistanceChunks` | `0` | 0 follows Minecraft render distance; 1–64 sets a lower viewing limit in chunks |
 | `maxShadowLights` | `4` | 0–4 |
 | `shadowResolution` | `256` | 64–2048 pixels per face |
-| `volumetricSteps` | `12` | 4–24 |
+| `volumetricSteps` | `12` | 0–24; zero disables volumetrics |
 | `renderScale` | `0.5` | 0.25–1.0 |
-| `maxRange` | `24.0` | 1–32 blocks |
+| `maxRange` | `24.0` | 1–32 blocks of reach from each analytic source; does not limit camera viewing distance or vanilla block lighting |
 | `intensityMultiplier` | `1.0` | 0–8 |
-| `mediumUpdateTicks` | `10` | 1–200 ticks |
+| `periodicCacheRefresh` | `false` | Enable periodic safety rescans for mods that bypass ordinary update notifications |
+| `mediumUpdateTicks` | `10` | 1–200 ticks between safety rescans when `periodicCacheRefresh` is enabled |
+
+Replacement, GI, scene scanning, transmission, and bloom settings are covered in the [lighting configuration reference](docs/lighting.md), including example performance profiles.
 
 ## For developers
 

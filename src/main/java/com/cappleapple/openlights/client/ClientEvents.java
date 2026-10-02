@@ -32,13 +32,21 @@ public final class ClientEvents {
     @SubscribeEvent public static void unload(LevelEvent.Unload event) {
         if(event.getLevel().isClientSide()) { OpenLightRenderer.clearWorld(); BeamDustParticles.clear(); }
     }
+    @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {
+        ServerLightingSupport.restoreServerModels();
+        com.mojang.logging.LogUtils.getLogger().info("Open Lights connection mode: {}",
+                ServerLightingSupport.isClientOnly() ? "client-only lighting (server content unavailable)" : "full server support");
+    }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { OpenLightRenderer.clearWorld(); BeamDustParticles.clear(); }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
-        if(event.phase==TickEvent.Phase.END && !Minecraft.getInstance().isPaused()) BeamDustParticles.tick(ClientConfig.ENABLED.get() && ClientConfig.BEAM_DUST.get());
+        if(event.phase==TickEvent.Phase.END && !Minecraft.getInstance().isPaused()) {
+            OpenLightRenderer.clientTick();
+            BeamDustParticles.tick(ClientConfig.ENABLED.get() && ClientConfig.BEAM_DUST.get());
+        }
     }
 
     @SubscribeEvent public static void handheld(CollectLightsEvent event) {
-        if (ShaderCompatibility.isRenderingShadowPass()) return;
+        if (ShaderCompatibility.isRenderingShadowPass() || ServerLightingSupport.isClientOnly()) return;
         var mc=Minecraft.getInstance();
         if(mc.level==null) return;
         for(var player:mc.level.players()) {
@@ -62,6 +70,15 @@ public final class ClientEvents {
 
     @Mod.EventBusSubscriber(modid=OpenLightsMod.MOD_ID,value=Dist.CLIENT,bus=Mod.EventBusSubscriber.Bus.MOD)
     public static final class ModEvents {
+        @SubscribeEvent public static void creativeTabs(net.minecraftforge.event.BuildCreativeModeTabContentsEvent event) {
+            if (ServerLightingSupport.isClientOnly()) return;
+            if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.TOOLS_AND_UTILITIES) event.accept(ModContent.FLASHLIGHT.get());
+            if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+                event.accept(ModContent.POINT_LIGHT.get());
+                event.accept(ModContent.SPOT_LIGHT.get());
+                event.accept(ModContent.AREA_LIGHT.get());
+            }
+        }
         @SubscribeEvent public static void particles(RegisterParticleProvidersEvent event) { BeamDustParticles.registerProviders(event); }
         @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event) {
             event.registerReloadListener((ResourceManagerReloadListener) manager -> {

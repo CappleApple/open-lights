@@ -108,8 +108,12 @@ The event runs on the render thread. Do not retain it, mutate it asynchronously,
 
 The renderer selects nearby visible lights within client limits. Point, spot, and area lights require six, one, and four shadow views respectively. Shadow geometry comes from cached block shapes, so this API currently cannot request shadows from entity models.
 
-Sources and receivers are restricted to the cached 32-block radius around the camera, with a smooth boundary fade. Requested range is also capped by the client configuration.
+Analytic sources are selected when their influence bounds intersect the view and Minecraft render distance, including a source outside the view whose light reaches into it. There is no fixed 32-block camera cutoff or camera-distance intensity fade. Requested source reach remains capped by `maxRange`. `lightRenderDistanceChunks=0` follows render distance; a positive value can reduce the analytic viewing distance without changing source definitions. The eight-source and four-shadow-source budgets still apply. Shadow geometry is cached around selected sources under the shared scene scan budget.
+
+Submitted lights also participate in cached diffuse GI. GI selects nearby sources independently of the view frustum, up to `globalIllumination.sourceLimit`. The probe budget can delay the indirect contribution of moving or removed lights. No new provider API is required; one submission feeds both paths. Area-light GI uses the center-emitter approximation. See [lighting modes and limits](lighting.md).
 
 The optional public helper `ShaderCompatibility.isRenderingShadowPass()` identifies Iris/Oculus shadow views. It returns false when that API is absent or on a dedicated server; the client resolves only public API methods once.
+
+`ShaderCompatibility.isShaderPackInUse()` is a client-only helper for deciding whether world-lightmap replacement is safe. It returns true for an active pack or a known installed loader whose API cannot be queried. It does not detect arbitrary rendering mods.
 
 Light definitions contain no loader-specific rendering objects. Resource packs may replace Open Lights shader resources, but shaders and internal rendering classes are not part of the public Java compatibility contract.

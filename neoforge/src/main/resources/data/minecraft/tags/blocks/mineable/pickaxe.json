@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "openlights:point_light",
+    "openlights:spot_light",
+    "openlights:area_light"
+  ]
+}

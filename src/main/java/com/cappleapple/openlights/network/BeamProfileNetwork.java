@@ -12,10 +12,14 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class BeamProfileNetwork {
     private static final String VERSION = "1";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation("openlights", "beam_profiles"), () -> VERSION, VERSION::equals, VERSION::equals);
+            new ResourceLocation("openlights", "beam_profiles"), () -> VERSION, NetworkRegistry.acceptMissingOr(VERSION), NetworkRegistry.acceptMissingOr(VERSION));
     private static boolean registered;
 
     private BeamProfileNetwork() {}
+
+    public static boolean supports(net.minecraft.network.Connection connection) {
+        return CHANNEL.isRemotePresent(connection);
+    }
 
     public static void register() {
         if (registered) return;
@@ -28,7 +32,7 @@ public final class BeamProfileNetwork {
     }
 
     public static void send(ServerPlayer player, BeamProfiles.Snapshot snapshot) {
-        CHANNEL.sendTo(snapshot, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+        if (supports(player.connection.connection)) CHANNEL.sendTo(snapshot, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
     }
 
 }

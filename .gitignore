@@ -15,3 +15,7 @@ libs/
 **/.research/
 **/build/
 **/.gradle/
+/docs/CURRENT_STATE.md
+
+/neoforge/run-*/
+/neoforge/docs/CURRENT_STATE.md

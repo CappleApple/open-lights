@@ -6,6 +6,7 @@ modId="openlights"
 version="${version}"
 displayName="Open Lights"
 authors="CappleApple"
+displayTest="IGNORE_ALL_VERSION"
 description='''Open-source point, spot and area lighting with shadows, transparent-medium transmission and a public API.'''
 [[dependencies.openlights]]
 modId="forge"

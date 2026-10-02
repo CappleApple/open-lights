@@ -48,7 +48,7 @@ final class BeamDustOcclusion {
     private static boolean transmitting(BlockState state) {
         Block block = state.getBlock();
         if (block instanceof TintedGlassBlock) return false;
-        return block instanceof LightSourceBlock || block instanceof AbstractGlassBlock
+        return block instanceof LightSourceBlock || block instanceof HalfTransparentBlock
                 || block instanceof StainedGlassPaneBlock || block == Blocks.GLASS_PANE
                 || block instanceof IceBlock || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE;
         // Water has an empty block shape. Waterlogged solids retain their shape.

@@ -1,0 +1,51 @@
+package com.cappleapple.openlights.content;
+
+import com.cappleapple.openlights.OpenLightsMod;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.core.registries.Registries;
+import net.neoforged.neoforge.registries.DeferredHolder;
+
+public final class ModContent {
+    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(Registries.ITEM, OpenLightsMod.MOD_ID);
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, OpenLightsMod.MOD_ID);
+    private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, OpenLightsMod.MOD_ID);
+
+    private static final DeferredRegister<ParticleType<?>> PARTICLES = DeferredRegister.create(Registries.PARTICLE_TYPE, OpenLightsMod.MOD_ID);
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> BEAM_DUST = PARTICLES.register("beam_dust", () -> new SimpleParticleType(false));
+
+    public static final DeferredHolder<Item, FlashlightItem> FLASHLIGHT = ITEMS.register("flashlight",
+            () -> new FlashlightItem(new Item.Properties().stacksTo(1)));
+    public static final DeferredHolder<Block, LightSourceBlock> POINT_LIGHT = light("point_light", LightShape.POINT);
+    public static final DeferredHolder<Block, LightSourceBlock> SPOT_LIGHT = light("spot_light", LightShape.SPOT);
+    public static final DeferredHolder<Block, LightSourceBlock> AREA_LIGHT = light("area_light", LightShape.AREA);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LightSourceBlockEntity>> LIGHT_SOURCE_BLOCK_ENTITY =
+            BLOCK_ENTITIES.register("light_source", () -> BlockEntityType.Builder.of(LightSourceBlockEntity::new,
+                    POINT_LIGHT.get(), SPOT_LIGHT.get(), AREA_LIGHT.get()).build(null));
+
+    private ModContent() {}
+
+    private static DeferredHolder<Block, LightSourceBlock> light(String name, LightShape shape) {
+        DeferredHolder<Block, LightSourceBlock> block = BLOCKS.register(name, () -> new LightSourceBlock(
+                BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(1.5f).sound(SoundType.METAL).noOcclusion(), shape));
+        ITEMS.register(name, () -> new BlockItem(block.get(), new Item.Properties()));
+        return block;
+    }
+
+    public static void register(IEventBus bus) {
+        ITEMS.register(bus);
+        BLOCKS.register(bus);
+        BLOCK_ENTITIES.register(bus);
+        PARTICLES.register(bus);
+    }
+
+}

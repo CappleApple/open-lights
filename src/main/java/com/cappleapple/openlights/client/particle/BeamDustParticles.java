@@ -23,13 +23,16 @@ public final class BeamDustParticles {
     private static ClientLevel world;
     private static int nextBeam;
     private static long totalSpawned;
+    private static net.minecraft.client.particle.SpriteSet dustSprites;
     private static double intensityMultiplier = 1;
 
     private BeamDustParticles() {}
 
     public static void registerProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(ModContent.BEAM_DUST.get(), sprites ->
-                (type, level, x, y, z, dx, dy, dz) -> new BeamDustParticle(level, x, y, z, dx, dy, dz, sprites));
+        event.registerSpriteSet(ModContent.BEAM_DUST.get(), sprites -> {
+            dustSprites = sprites;
+            return (type, level, x, y, z, dx, dy, dz) -> new BeamDustParticle(level, x, y, z, dx, dy, dz, sprites);
+        });
     }
 
     /** Call once at the end of an unpaused client tick, on the client thread. */
@@ -88,14 +91,15 @@ public final class BeamDustParticles {
         if (BeamDustSampling.color(beam, position, intensityMultiplier).lengthSqr() < .00000001
                 || !BeamDustOcclusion.clear(world, beam.position(), position)) return;
         double drift = dust.speed();
-        var created = mc.particleEngine.createParticle(ModContent.BEAM_DUST.get(), position.x, position.y, position.z,
+        // Forge removes absent-server registry objects; local motes need no registry or packet.
+        if (dustSprites == null) return;
+        var particle = new BeamDustParticle(world, position.x, position.y, position.z,
                 (random.nextDouble() * 2 - 1) * drift, (random.nextDouble() * 2 - 1) * drift,
-                (random.nextDouble() * 2 - 1) * drift);
-        if (created instanceof BeamDustParticle particle) {
-            ACTIVE.add(particle);
-            particle.attach(key, dust);
-            if (particle.isAlive()) totalSpawned++;
-        }
+                (random.nextDouble() * 2 - 1) * drift, dustSprites);
+        mc.particleEngine.add(particle);
+        ACTIVE.add(particle);
+        particle.attach(key, dust);
+        if (particle.isAlive()) totalSpawned++;
     }
 
     static double intensityMultiplier() { return intensityMultiplier; }

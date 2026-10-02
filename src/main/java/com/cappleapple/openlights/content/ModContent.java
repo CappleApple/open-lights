@@ -48,15 +48,7 @@ public final class ModContent {
         BLOCKS.register(bus);
         BLOCK_ENTITIES.register(bus);
         PARTICLES.register(bus);
-        bus.addListener(ModContent::creativeTabs);
+
     }
 
-    private static void creativeTabs(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) event.accept(FLASHLIGHT.get());
-        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-            event.accept(POINT_LIGHT.get());
-            event.accept(SPOT_LIGHT.get());
-            event.accept(AREA_LIGHT.get());
-        }
-    }
 }

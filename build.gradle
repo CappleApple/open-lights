@@ -4,7 +4,7 @@ plugins {
     id 'org.spongepowered.mixin'
 }
 group = 'com.cappleapple.openlights'
-version = '1.1.1'
+version = '1.8.1'
 base.archivesName = 'openlights-1.20.1'
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 java.withSourcesJar()
@@ -47,7 +47,7 @@ tasks.register('verifyModJar') {
             if (zip.getEntry('openlights.refmap.json') == null) {
                 throw new GradleException('Missing Mixin refmap in ' + artifact.name)
             }
-            if (zip.entries().toList().any { it.name.contains('/smoke/') }) {
+            if (zip.entries().toList().any { it.name.contains('/smoke/') || it.name.contains('/qa/') || it.name.startsWith('openlightsqa.') }) {
                 throw new GradleException('Development smoke code leaked into ' + artifact.name)
             }
         }

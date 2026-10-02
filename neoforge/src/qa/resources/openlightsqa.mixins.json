@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.cappleapple.openlights.qa.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MouseHandlerMixin",
+    "WindowMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,23 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="CC BY-NC-SA 4.0 with Additional Permission for Minecraft Modpacks and Servers"
+[[mods]]
+modId="openlights"
+version="${version}"
+displayName="Open Lights"
+authors="CappleApple"
+description="Point, spot and area lighting with cached world illumination."
+[[mixins]]
+config="openlights.mixins.json"
+[[dependencies.openlights]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.openlights]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"

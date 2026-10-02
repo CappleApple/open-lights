@@ -25,13 +25,20 @@ final class OpticalMaterials {
         if (block instanceof StainedGlassBlock glass) return dye(glass.getColor());
         if (block instanceof StainedGlassPaneBlock pane) return dye(pane.getColor());
         if (block instanceof IceBlock || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE) return ICE;
-        if (block instanceof AbstractGlassBlock || block == Blocks.GLASS_PANE) return CLEAR;
+        if (block instanceof HalfTransparentBlock || block == Blocks.GLASS_PANE) return CLEAR;
+        if (net.minecraft.client.renderer.ItemBlockRenderTypes.getChunkRenderType(state)
+                == net.minecraft.client.renderer.RenderType.translucent()) return CLEAR;
         return null;
     }
 
+    static Properties block(ClientLevel level, BlockPos pos, BlockState state) {
+        Properties optical = block(state);
+        return optical == null ? null : new Properties(TextureColors.transmission(level, pos, state), optical.throughput(), optical.density());
+    }
+
     static Properties water(ClientLevel level, BlockPos position) {
-        int color = BiomeColors.getAverageWaterColor(level, position);
-        double red = (color >> 16 & 255) / 255.0, green = (color >> 8 & 255) / 255.0, blue = (color & 255) / 255.0;
+        Vec3 color = TextureColors.water(level, position);
+        double red = color.x, green = color.y, blue = color.z;
         double brightest = Math.max(.001, Math.max(red, Math.max(green, blue)));
         return new Properties(new Vec3(1 + (red / brightest - 1) * .62,
                 1 + (green / brightest - 1) * .62, 1 + (blue / brightest - 1) * .62), .98F, 2.50F);

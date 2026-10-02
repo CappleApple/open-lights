@@ -1,0 +1,73 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+group = 'com.cappleapple.openlights'
+version = '1.8.1'
+base.archivesName = 'openlights-neoforge-1.21.1'
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.withSourcesJar()
+neoForge {
+    version = '21.1.248'
+    runs {
+        client { client(); gameDirectory = file('run-client') }
+        server { server(); gameDirectory = file('run-server'); programArgument '--nogui' }
+    }
+    mods { openlights { sourceSet sourceSets.main } }
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
+sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+test { useJUnitPlatform() }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') { expand version: project.version }
+}
+jar { from('../LICENSE'); from('../THIRD_PARTY_NOTICES.md'); into('licenses') { from '../licenses' } }
+sourcesJar { from('../LICENSE'); from('../THIRD_PARTY_NOTICES.md'); into('licenses') { from '../licenses' } }
+
+sourceSets {
+    qa {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+neoForge {
+    mods { openlightsqa { sourceSet sourceSets.qa } }
+    runs {
+        qa {
+            client()
+            sourceSet = sourceSets.qa
+            gameDirectory = file(project.hasProperty('qaShaders') ? 'run-shaders' : 'run-qa')
+            systemProperty "openlights.${project.findProperty('qaMode') ?: 'style'}Smoke", 'true'
+            programArguments.addAll '--width', '1280', '--height', '800'
+        }
+    }
+}
+tasks.register('qaJar', Jar) {
+    from sourceSets.qa.output
+    archiveClassifier = 'qa'
+}
+
+// QA is never loaded by ordinary development client/server runs.
+neoForge.runs.client.loadedMods = [neoForge.mods.openlights]
+neoForge.runs.server.loadedMods = [neoForge.mods.openlights]
+if (project.hasProperty('qaShaders')) {
+    neoForge.runs.qa.systemProperty 'openlights.expectShaderPack', 'true'
+    dependencies { qaRuntimeOnly fileTree(dir: '.research/shader-mods', include: '*.jar') }
+}
+tasks.register('verifyModJar') {
+    dependsOn jar
+    doLast {
+        def artifact = tasks.jar.archiveFile.get().asFile
+        def contents = zipTree(artifact)
+        if (!contents.matching { include 'META-INF/neoforge.mods.toml' }.files) throw new GradleException('Missing NeoForge metadata')
+        if (contents.matching { include '**/qa/**'; include 'openlightsqa.mixins.json'; include 'META-INF/mods.toml' }.files) throw new GradleException('QA or Forge-only metadata leaked into runtime JAR')
+        if (contents.matching { include 'data/**/recipes/**'; include 'data/**/loot_tables/**' }.files) throw new GradleException('Obsolete data directory in runtime JAR')
+    }
+}
+tasks.named('build') { dependsOn 'verifyModJar' }
