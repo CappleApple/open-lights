@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.8.3 - 2026-10-06
+
+### Fixed
+
+- Nighttime terrain darkening at the transition from normal chunks to Distant Horizons terrain when cached lighting shaded DH's fade contribution twice. Normal chunks now retain native sky shading before the fade and receive cached block lighting separately.
+
+## 1.8.2 - 2026-10-06
+
+### Fixed
+
+- Analytic lights and volumetric beams ignoring Distant Horizons terrain depth. LOD terrain retains its native shading while normal chunks continue using the selected Open Lights style.
+- Stale terrain depth after framebuffer resizing.
+
 ## 1.8.1 - 2026-10-02
 
 ### Changed

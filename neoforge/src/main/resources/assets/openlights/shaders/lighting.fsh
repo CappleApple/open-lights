@@ -11,6 +11,14 @@ uniform mat4 InverseViewRotation;
 uniform vec3 CameraLocal;
 uniform int LightCount;
 uniform int ReplaceLighting;
+uniform int KeepNativeSky;
+uniform sampler3D SkyWorldTexture;
+uniform vec3 SkyWorldMinimum;
+uniform vec2 SkyWorldGrid;
+uniform sampler3D SkyNearTexture;
+uniform vec3 SkyNearMinimum;
+uniform vec2 SkyNearGrid;
+uniform sampler2D SkyLightmap;
 uniform vec4 LightPositionRange[8];
 uniform float ViewRayLength;
 uniform float LightViewLimit;
@@ -55,6 +63,26 @@ vec3 safeUnit(vec3 value, vec3 fallback) {
 vec3 finiteColor(vec3 value) {
     if (any(isnan(value)) || any(isinf(value))) return vec3(0.0);
     return clamp(value, vec3(0.0), vec3(16.0));
+}
+
+vec3 cachedSkyPalette(vec3 position, vec3 normal) {
+    position += normal * 0.55;
+    vec3 coordinate = ((position - SkyWorldMinimum) / SkyWorldGrid.x + 0.5) / SkyWorldGrid.y;
+    vec3 distant = texture(SkyWorldTexture, coordinate).rgb;
+    float sky = clamp(distant.g / max(distant.b, 0.00001), 0.0, 1.0);
+    vec3 nearCell = (position - SkyNearMinimum) / SkyNearGrid.x;
+    vec4 nearby = texture(SkyNearTexture, (nearCell + 0.5) / SkyNearGrid.y);
+    vec3 border = min(nearCell, vec3(SkyNearGrid.y - 1.0) - nearCell);
+    float weight = clamp(min(border.x, min(border.y, border.z)) / 2.0, 0.0, 1.0);
+    if (nearby.a > 0.001 && nearby.b > 0.001) sky = mix(sky, nearby.g / nearby.b, weight * nearby.a);
+    vec2 lightUv = clamp(vec2(0.0, sky) * 15.0 / 16.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0));
+    return texture(SkyLightmap, lightUv).rgb;
+}
+
+vec4 lightingResult(vec3 direct, vec3 volume) {
+    // Alpha marks surface/GI light; zero identifies a pure foreground-fog sample.
+    bool hasDirect = any(greaterThan(finiteColor(direct), vec3(0.0)));
+    return vec4(finiteColor(direct + volume), hasDirect ? 1.0 : 0.0);
 }
 
 // Segment clipping also handles rays starting inside a medium.
@@ -252,22 +280,32 @@ vec3 relativePositionAt(vec2 coordinate, float depth) {
     return (InverseViewRotation * vec4(view.xyz * inverseW, 0.0)).xyz;
 }
 
-vec3 receiverNormal(ivec2 pixel, ivec2 size, float depth, vec3 relativePosition, vec3 fallback) {
+vec3 receiverPositionAt(vec2 coordinate, vec3 depth) {
+    vec3 position = relativePositionAt(coordinate, depth.r);
+    return depth.g > 0.5 ? safeUnit(position, vec3(0.0, 0.0, -1.0)) * depth.b : position;
+}
+
+float receiverDifference(vec3 sampleDepth, vec3 depth) {
+    if (abs(sampleDepth.g - depth.g) > 0.5) return 1e20;
+    return depth.g > 0.5 ? abs(sampleDepth.b - depth.b) : abs(sampleDepth.r - depth.r);
+}
+
+vec3 receiverNormal(ivec2 pixel, ivec2 size, vec3 depth, vec3 relativePosition, vec3 fallback) {
     ivec2 left = max(pixel - ivec2(1, 0), ivec2(0));
     ivec2 right = min(pixel + ivec2(1, 0), size - ivec2(1));
     ivec2 down = max(pixel - ivec2(0, 1), ivec2(0));
     ivec2 up = min(pixel + ivec2(0, 1), size - ivec2(1));
-    float leftDepth = texelFetch(OpaqueDepth, left, 0).r;
-    float rightDepth = texelFetch(OpaqueDepth, right, 0).r;
-    float downDepth = texelFetch(OpaqueDepth, down, 0).r;
-    float upDepth = texelFetch(OpaqueDepth, up, 0).r;
+    vec3 leftDepth = texelFetch(OpaqueDepth, left, 0).rgb;
+    vec3 rightDepth = texelFetch(OpaqueDepth, right, 0).rgb;
+    vec3 downDepth = texelFetch(OpaqueDepth, down, 0).rgb;
+    vec3 upDepth = texelFetch(OpaqueDepth, up, 0).rgb;
     // Prefer the neighbor on the receiver's plane, rather than differentiating across a block edge.
-    bool useLeft = pixel.x > 0 && (pixel.x == size.x - 1 || abs(leftDepth - depth) < abs(rightDepth - depth));
-    bool useDown = pixel.y > 0 && (pixel.y == size.y - 1 || abs(downDepth - depth) < abs(upDepth - depth));
+    bool useLeft = pixel.x > 0 && (pixel.x == size.x - 1 || receiverDifference(leftDepth, depth) < receiverDifference(rightDepth, depth));
+    bool useDown = pixel.y > 0 && (pixel.y == size.y - 1 || receiverDifference(downDepth, depth) < receiverDifference(upDepth, depth));
     vec2 xUv = (vec2(useLeft ? left : right) + 0.5) / vec2(size);
     vec2 yUv = (vec2(useDown ? down : up) + 0.5) / vec2(size);
-    vec3 dx = relativePositionAt(xUv, useLeft ? leftDepth : rightDepth) - relativePosition;
-    vec3 dy = relativePositionAt(yUv, useDown ? downDepth : upDepth) - relativePosition;
+    vec3 dx = receiverPositionAt(xUv, texelFetch(OpaqueDepth, useLeft ? left : right, 0).rgb) - relativePosition;
+    vec3 dy = receiverPositionAt(yUv, texelFetch(OpaqueDepth, useDown ? down : up, 0).rgb) - relativePosition;
     if (useLeft) dx = -dx;
     if (useDown) dy = -dy;
     // Normalize each tangent before the cross product; close surfaces have tiny pixel footprints.
@@ -280,23 +318,24 @@ vec3 receiverNormal(ivec2 pixel, ivec2 size, float depth, vec3 relativePosition,
 void main() {
     int lightCount = clamp(LightCount, 0, 8);
     if(lightCount==0&&(GiStrength<=0.0||GiGrid.x<=0.0)) {
-        fragColor=vec4(0.0,0.0,0.0,1.0);
+        fragColor=vec4(0.0);
         return;
     }
 
     ivec2 depthSize = textureSize(OpaqueDepth, 0);
     ivec2 depthPixel = clamp(ivec2(uv * vec2(depthSize)), ivec2(0), depthSize - ivec2(1));
     vec2 depthUv = (vec2(depthPixel) + 0.5) / vec2(depthSize);
-    float depth = clamp(texelFetch(OpaqueDepth, depthPixel, 0).r, 0.0, 1.0);
+    vec3 depthData = texelFetch(OpaqueDepth, depthPixel, 0).rgb;
+    float depth = clamp(depthData.r, 0.0, 1.0);
     // Lighting may run at half resolution: reconstruct the fetched full-resolution depth texel.
-    vec3 relativePosition = relativePositionAt(depthUv, depth);
+    vec3 relativePosition = receiverPositionAt(depthUv, depthData);
     vec3 position = CameraLocal + relativePosition;
     vec3 rayDirection = safeUnit(relativePosition, vec3(0.0, 0.0, -1.0));
-    vec3 normal = depth < 0.999999 ? receiverNormal(depthPixel, depthSize, depth, relativePosition, -rayDirection)
+    bool hasSurface = depthData.g > 0.5 || depth < 0.999999;
+    vec3 normal = hasSurface ? receiverNormal(depthPixel, depthSize, depthData, relativePosition, -rayDirection)
             : -rayDirection;
     vec3 direct = vec3(0.0);
-    bool hasSurface = depth < 0.999999;
-    if (hasSurface && lightCount > 0) {
+    if (hasSurface && lightCount > 0 && depthData.g < 0.5) {
         // One 24-bit depth step grows in world space with viewing distance. Project it onto
         // the receiver plane normal, rather than increasing bias with source range.
         vec3 adjacentDepth = relativePositionAt(depthUv, max(0.0, depth - 1.0 / 16777216.0));
@@ -334,7 +373,10 @@ void main() {
 
     // Final scene color is a bounded reflectance proxy, not a shaderpack material buffer.
     vec3 surfaceColor=texture(SceneColor, uv).rgb;
-    vec3 reflectance = ReplaceLighting != 0 ? clamp(surfaceColor,vec3(0.0),vec3(1.0))
+    if (ReplaceLighting != 0 && KeepNativeSky != 0 && depthData.g < 0.5) {
+        surfaceColor /= max(cachedSkyPalette(position,normal),vec3(1.0/255.0));
+    }
+    vec3 reflectance = ReplaceLighting != 0 && depthData.g < 0.5 ? clamp(surfaceColor,vec3(0.0),vec3(1.0))
             : clamp(surfaceColor * 0.65 + vec3(0.18), vec3(0.18), vec3(1.0));
     direct *= reflectance;
     if (hasSurface && max(direct.r, max(direct.g, direct.b)) > 0.00001) {
@@ -372,7 +414,7 @@ void main() {
             marchEnd = max(marchEnd, exitDistance);
         }
         if (marchEnd <= marchStart) {
-            fragColor = vec4(finiteColor(direct), 1.0);
+            fragColor = lightingResult(direct, vec3(0.0));
             return;
         }
         // Clip camera/media intervals once, outside the light and marching loops.
@@ -441,5 +483,5 @@ void main() {
             volume += scattered * viewTransmission * scatteringTint * min(density, 8.0) * stepLength * coverage * 0.025;
         }
     }
-    fragColor = vec4(finiteColor(direct + volume), 1.0);
+    fragColor = lightingResult(direct, volume);
 }

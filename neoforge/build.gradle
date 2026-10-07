@@ -3,7 +3,7 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.143'
 }
 group = 'com.cappleapple.openlights'
-version = '1.8.1'
+version = '1.8.3'
 base.archivesName = 'openlights-neoforge-1.21.1'
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 java.withSourcesJar()
@@ -15,7 +15,14 @@ neoForge {
     }
     mods { openlights { sourceSet sourceSets.main } }
 }
+repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
 dependencies {
+    compileOnly 'maven.modrinth:distanthorizonsapi:7.2.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

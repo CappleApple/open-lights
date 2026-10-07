@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 
 final class RenderTargets implements AutoCloseable {
     int width, height, lightWidth, lightHeight, resolution;
-    int opaqueDepth, opaqueFbo, sceneColor, sceneFbo, lighting, lightingFbo, shadowDepth, shadowFbo;
+    int vanillaDepth, vanillaFbo, opaqueDepth, opaqueFbo, sceneColor, sceneFbo, lighting, lightingFbo, shadowDepth, shadowFbo;
 
     boolean resize(int width, int height, float scale, int resolution) {
         int lw = Math.max(1, Math.round(width * scale)), lh = Math.max(1, Math.round(height * scale));
@@ -15,7 +15,10 @@ final class RenderTargets implements AutoCloseable {
         this.width = width; this.height = height; lightWidth = lw; lightHeight = lh;
         this.resolution = resolution;
         try (var ignored = new TextureUploadState()) {
-        opaqueDepth = texture(width, height, GL30.GL_R32F, GL11.GL_RED, GL11.GL_FLOAT, GL11.GL_NEAREST);
+        vanillaDepth = texture(width, height, GL30.GL_R32F, GL11.GL_RED, GL11.GL_FLOAT, GL11.GL_NEAREST);
+        vanillaFbo = framebuffer(vanillaDepth);
+        // Depth, terrain owner and true receiver distance; DH has a different near/far projection.
+        opaqueDepth = texture(width, height, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT, GL11.GL_NEAREST);
         opaqueFbo = framebuffer(opaqueDepth);
         sceneColor = texture(width, height, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, GL11.GL_NEAREST);
         sceneFbo = framebuffer(sceneColor);
@@ -66,9 +69,9 @@ final class RenderTargets implements AutoCloseable {
         if (status != GL30.GL_FRAMEBUFFER_COMPLETE) throw new IllegalStateException("Open Lights framebuffer status " + status);
     }
     @Override public void close() {
-        for (int id : new int[]{opaqueDepth,sceneColor,lighting,shadowDepth}) if (id != 0) com.mojang.blaze3d.platform.GlStateManager._deleteTexture(id);
-        for (int id : new int[]{opaqueFbo,sceneFbo,lightingFbo,shadowFbo}) if (id != 0) GL30.glDeleteFramebuffers(id);
-        opaqueDepth=sceneColor=lighting=shadowDepth=opaqueFbo=sceneFbo=lightingFbo=shadowFbo=0;
+        for (int id : new int[]{vanillaDepth,opaqueDepth,sceneColor,lighting,shadowDepth}) if (id != 0) com.mojang.blaze3d.platform.GlStateManager._deleteTexture(id);
+        for (int id : new int[]{vanillaFbo,opaqueFbo,sceneFbo,lightingFbo,shadowFbo}) if (id != 0) GL30.glDeleteFramebuffers(id);
+        vanillaDepth=vanillaFbo=opaqueDepth=sceneColor=lighting=shadowDepth=opaqueFbo=sceneFbo=lightingFbo=shadowFbo=0;
         width=height=lightWidth=lightHeight=resolution=0;
     }
 }

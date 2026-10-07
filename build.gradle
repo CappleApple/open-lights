@@ -4,17 +4,25 @@ plugins {
     id 'org.spongepowered.mixin'
 }
 group = 'com.cappleapple.openlights'
-version = '1.8.1'
+version = '1.8.3'
 base.archivesName = 'openlights-1.20.1'
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 java.withSourcesJar()
 minecraft {
     mappings channel: 'official', version: '1.20.1'
 }
-repositories { mavenCentral(); maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
 mixin { add sourceSets.main, 'openlights.refmap.json'; config 'openlights.mixins.json' }
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
+    compileOnly 'maven.modrinth:distanthorizonsapi:7.2.0'
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

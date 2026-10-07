@@ -1,5 +1,17 @@
 # Sodium and Iris verification
 
+## 1.8.3 Distant Horizons ambient transition
+
+Tested on 2026-10-06 with packaged Open Lights 1.8.3, Distant Horizons 3.3.3, Sodium 0.8.13 and Iris 1.8.14-beta.1. Shaders-off and active Complementary Reimagined r5.9.3 runs passed LOD receiver ownership, lighting, reload, framebuffer resize and DH disable/restore. Active packs retain additive Open Lights rendering.
+
+Separate default-renderer landscape checks passed 40 day/night, fade, GI, fog and wide-view controls. Normal chunks retain native sky shading before DH fading, preventing the previous dark transition band. See [1.8.3 verification](../../docs/verification-1.8.3.md) for artifact identities, measurements and scope. These isolated fixtures do not establish full Stoneblock or arbitrary shader-pack compatibility.
+
+## 1.8.2 Distant Horizons
+
+Tested on 2026-10-06 with packaged Open Lights 1.8.2, Distant Horizons 3.3.3, Sodium 0.8.13 and Iris 1.8.14-beta.1. Shader-disabled and active Complementary Reimagined r5.9.3 runs passed LOD receiver ownership, native shading, API lighting, reload, framebuffer resize and DH disable/restore checks. Representative day/night captures were inspected. Active shaders retain additive Open Lights rendering.
+
+See [the shared 1.8.2 verification record](../../docs/verification-1.8.2.md) for both loaders, exact artifact identities and test limits, and [Distant Horizons behavior](../../docs/distant-horizons.md) for integration details. These isolated fixtures do not establish full Stoneblock or arbitrary shader-pack compatibility.
+
 ## 1.7.3 visibility regression
 
 Tested 2026-09-30 with the packaged runtime, Sodium 0.8.13 and Iris 1.8.14-beta.1, shaders disabled. Visibility, style, full renderer, contrast and continuous-update suites passed. Inspected captures confirmed off-screen sources illuminating visible receivers, restoration when turning toward culled beams, and a camera inside a beam. An opaque-wall/disabled-light capture pair was pixel-for-pixel identical. See [the 1.7.3 verification record](verification.md#173-visibility-culling) for scope, timing and evidence.

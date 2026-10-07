@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 
 import java.util.*;
 
-/** Original deferred light renderer. Uses Forge stages and vanilla scene depth only. */
+/** Deferred light renderer with normal-chunk shading and optional Distant Horizons receivers. */
 public final class OpenLightRenderer {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final RenderTargets TARGETS = new RenderTargets();
@@ -36,8 +36,8 @@ public final class OpenLightRenderer {
     private static final ProbeTexture FAR_GI_TEXTURE = new ProbeTexture();
     private static final BlockSectionTexture BLOCK_TEXTURE = new BlockSectionTexture();
     private static List<LightDefinition> indirectSources = List.of();
-    private static int neutralLightmap, nativeLightmap;
-    private static boolean worldPass, replacementFrame;
+    private static int neutralLightmap, nativeLightmap, skyLightmap;
+    private static boolean worldPass, replacementFrame, nativeSkyFrame;
     private static double worldCacheMillis;
     private static long cacheTick;
     /** A monotonic local clock: server time synchronization must not repeatedly discard warmed caches. */
@@ -49,6 +49,8 @@ public final class OpenLightRenderer {
     private static int fullScreenVao, geometryVao, geometryBuffer, mediumBuffer, vertexCount;
     private static long uploadedRevision = Long.MIN_VALUE;
     private static boolean failed, depthReady, matricesReady;
+    private static boolean distantDepthMerged;
+    private static int distantDepthTexture;
     private static long frames;
     private static Statistics statistics = new Statistics(0,0,0,0,0,0);
     private static final int[] timingQueries = new int[3];
@@ -60,6 +62,11 @@ public final class OpenLightRenderer {
 
     public static Map<LightKey, LightDefinition> frameLights() { return Collections.unmodifiableMap(FRAME_LIGHTS); }
     public static Statistics statistics() { return statistics; }
+    /** Internal diagnostics for current-frame LOD depth; borrowed textures remain DH-owned. */
+    public record DistantStatistics(boolean merged, int depthTexture, int receiverTexture) {}
+    public static DistantStatistics distantStatistics() {
+        return new DistantStatistics(distantDepthMerged, distantDepthTexture, TARGETS.opaqueDepth);
+    }
     public record Statistics(int lights, int shadowPasses, int triangles, int media, double cpuMillis, double gpuMillis) {}
     public record CacheStatistics(boolean replacement, int worldProbes, int worldCapacity,
                                   int giProbes, int giUpdated, double worldCpuMillis, double giCpuMillis,
@@ -80,18 +87,31 @@ public final class OpenLightRenderer {
                 WORLD_LIGHT.aggregates().discarded(),BLOCK_TEXTURE.uploaded(),BLOCK_TEXTURE.pending());
     }
 
-    public static void nativeLightmap(net.minecraft.client.renderer.texture.DynamicTexture texture) { nativeLightmap = texture.getId(); FirstPersonLighting.palette(texture); }
-    public static int worldLightmap() { return worldPass && replacementFrame ? neutralLightmap : FirstPersonLighting.texture(); }
+    public static void nativeLightmap(net.minecraft.client.renderer.texture.DynamicTexture texture) {
+        nativeLightmap = texture.getId();
+        FirstPersonLighting.palette(texture);
+        if (worldPass && replacementFrame && nativeSkyFrame) {
+            skyLightmap = NativeSkyLightmap.update(texture);
+            if (skyLightmap == 0) nativeSkyFrame = false;
+        }
+    }
+    public static int worldLightmap() {
+        return worldPass && replacementFrame ? (nativeSkyFrame ? skyLightmap : neutralLightmap) : FirstPersonLighting.texture();
+    }
+    /** Internal diagnostics for the ambient palette used by this world frame. */
+    public static boolean nativeSkyLighting() { return replacementFrame && nativeSkyFrame; }
     public static void beginHand() {
         try {FirstPersonLighting.begin(WORLD_LIGHT,replacementFrame&&!failed&&ClientConfig.ENABLED.get()&&!ShaderCompatibility.isShaderPackInUse());}
         catch(Exception exception){FirstPersonLighting.end();LOGGER.error("Unable to update first-person lighting",exception);}
     }
     public static void endHand() {FirstPersonLighting.end();if(nativeLightmap!=0)RenderSystem.setShaderTexture(2,nativeLightmap);}
     public static void beginWorld() {
-        worldPass = true; replacementFrame = false;
+        worldPass = true; replacementFrame = false; nativeSkyFrame = false;
         Minecraft mc = Minecraft.getInstance();
         if (!ClientConfig.GI_ENABLED.get() && INDIRECT.grid() != null) INDIRECT.clear();
         if (mc.level == null || failed || !ClientConfig.ENABLED.get() || ShaderCompatibility.isRenderingShadowPass()) return;
+        distantDepthMerged = false; distantDepthTexture = 0;
+        DistantHorizonsCompatibility.beginFrame();
         if (ClientConfig.LIGHTING_MODE.get() == ClientConfig.LightingMode.CACHED && !ShaderCompatibility.isShaderPackInUse()) {
             long start = System.nanoTime();
             try {
@@ -100,6 +120,7 @@ public final class OpenLightRenderer {
                 if (lighting == null) try (var ignored = new GlState()) { initialize(); }
                 WORLD_LIGHT.update(mc.level, mc.gameRenderer.getMainCamera().getPosition(), mc.options.getEffectiveRenderDistance(), cacheTick);
                 replacementFrame = true;
+                nativeSkyFrame = DistantHorizonsCompatibility.preserveNativeSky();
                 mc.gameRenderer.lightTexture().turnOnLightLayer();
             } catch (Exception exception) { fail(exception); }
             worldCacheMillis = (System.nanoTime() - start) / 1_000_000.0;
@@ -142,6 +163,7 @@ public final class OpenLightRenderer {
                 initialize();
                 prepareTargets();
                 if (!depthReady) copyDepth(mc.getMainRenderTarget().getDepthTextureId());
+                mergeDepth();
                 int query = timingQueries[timingIndex];
                 if (queryIssued[timingIndex] && GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT_AVAILABLE) != 0) {
                     gpuMillis = GL33.glGetQueryObjectui64(query, GL15.GL_QUERY_RESULT) / 1_000_000.0;
@@ -227,16 +249,43 @@ public final class OpenLightRenderer {
     private static void prepareTargets() {
         var target = Minecraft.getInstance().getMainRenderTarget();
         if(TARGETS.resize(target.width,target.height,ClientConfig.RENDER_SCALE.get().floatValue(),
-                ClientConfig.SHADOW_RESOLUTION.get())) SHADOWS.clear();
+                ClientConfig.SHADOW_RESOLUTION.get())) { SHADOWS.clear(); depthReady = false; }
     }
 
     private static void copyDepth(int source) {
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER,TARGETS.opaqueFbo);
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER,TARGETS.vanillaFbo);
         GL11.glViewport(0,0,TARGETS.width,TARGETS.height);
         screenState();
         depthCopy.bind();
         texture(0,GL11.GL_TEXTURE_2D,source);
         depthCopy.integer("SourceDepth",0);
+        depthCopy.integer("MergeDistant",0);
+        depthCopy.matrix("InverseProjection",new Matrix4f(PROJECTION).invert());
+        drawScreen();
+    }
+
+    private static void mergeDepth() {
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER,TARGETS.opaqueFbo);
+        GL11.glViewport(0,0,TARGETS.width,TARGETS.height);
+        screenState();
+        depthCopy.bind();
+        texture(0,GL11.GL_TEXTURE_2D,TARGETS.vanillaDepth);
+        depthCopy.integer("SourceDepth",0);
+        depthCopy.matrix("InverseProjection",new Matrix4f(PROJECTION).invert());
+        var distant = DistantHorizonsCompatibility.snapshot();
+        boolean usable = distant != null && GL11.glIsTexture(distant.depthTexture());
+        depthCopy.integer("MergeDistant",usable?1:0);
+        if (usable) {
+            texture(1,GL11.GL_TEXTURE_2D,distant.depthTexture());
+            depthCopy.integer("DistantDepth",1);
+            depthCopy.integer("DistantReversedDepth",distant.reversedDepth()?1:0);
+            depthCopy.integer("DistantZeroToOneDepth",distant.zeroToOneDepth()?1:0);
+            depthCopy.matrix("DistantInverseProjection",distant.inverseProjection());
+            depthCopy.matrix("DistantToVanillaView",new Matrix4f(VIEW).mul(distant.inverseView()));
+            depthCopy.matrix("Projection",PROJECTION);
+            distantDepthTexture = distant.depthTexture();
+        }
+        distantDepthMerged = usable;
         drawScreen();
     }
 
@@ -265,11 +314,18 @@ public final class OpenLightRenderer {
         float[] innerColors=new float[32],outerColors=new float[32],innerShapes=new float[32],outerShapes=new float[32];
         float[] boundsMinimum=new float[32],boundsMaximum=new float[32];
         int index=0, shadowSlot=0, passes=0;
+        double fogDistanceSquared = 0;
         int shadowLimit=Math.min(4,ClientConfig.MAX_SHADOW_LIGHTS.get());
         for (var entry : FRAME_LIGHTS.entrySet()) {
             LightDefinition light=entry.getValue();
             Vec3 local=light.position().subtract(scene.origin());
             AABB influence=LightCoverage.renderingBounds(light);
+            if (light.volumetricStrength() > 0 && light.intensity() > 0 && light.range() > 0) {
+                double dx = Math.max(Math.abs(influence.minX-camera.x), Math.abs(influence.maxX-camera.x));
+                double dy = Math.max(Math.abs(influence.minY-camera.y), Math.abs(influence.maxY-camera.y));
+                double dz = Math.max(Math.abs(influence.minZ-camera.z), Math.abs(influence.maxZ-camera.z));
+                fogDistanceSquared = Math.max(fogDistanceSquared, dx*dx+dy*dy+dz*dz);
+            }
             put(boundsMinimum,index,new Vec3(influence.minX,influence.minY,influence.minZ).subtract(scene.origin()),0);
             put(boundsMaximum,index,new Vec3(influence.maxX,influence.maxY,influence.maxZ).subtract(scene.origin()),0);
             put(positions,index,local,light.range());
@@ -324,6 +380,11 @@ public final class OpenLightRenderer {
         texture(2,GL30.GL_TEXTURE_2D_ARRAY,TARGETS.shadowDepth);
         lighting.integer("OpaqueDepth",0);lighting.integer("SceneColor",1);lighting.integer("ShadowDepth",2);
         lighting.integer("ReplaceLighting",replacementFrame?1:0);
+        lighting.integer("KeepNativeSky",nativeSkyFrame?1:0);
+        WORLD_TEXTURE.bind(lighting, "SkyWorld", 5, WORLD_LIGHT.grid(), scene.origin());
+        NEAR_TEXTURE.bind(lighting, "SkyNear", 6, WORLD_LIGHT.near(), scene.origin());
+        texture(7, GL11.GL_TEXTURE_2D, nativeLightmap);
+        lighting.integer("SkyLightmap",7);
         GI_TEXTURE.bind(lighting, "Gi", 3, INDIRECT.grid(), scene.origin());
         FAR_GI_TEXTURE.bind(lighting, "FarGi", 4, INDIRECT.far(), scene.origin());
         lighting.scalar("GiStrength", ClientConfig.GI_ENABLED.get() ? ClientConfig.GI_STRENGTH.get().floatValue() : 0);
@@ -333,7 +394,8 @@ public final class OpenLightRenderer {
         lighting.vec3("CameraLocal",(float)cameraLocal.x,(float)cameraLocal.y,(float)cameraLocal.z);
         lighting.integer("LightCount",index);lighting.integer("VolumetricSteps",ClientConfig.VOLUMETRIC_STEPS.get());
         int viewDistance = LightCoverage.distanceBlocks(mc.options.getEffectiveRenderDistance(), ClientConfig.LIGHT_RENDER_DISTANCE.get());
-        lighting.scalar("ViewRayLength", (float)(viewDistance * Math.sqrt(3)));
+        float viewRayLength = (float)(viewDistance * Math.sqrt(3));
+        lighting.scalar("ViewRayLength", viewRayLength);
         lighting.scalar("LightViewLimit", ClientConfig.LIGHT_RENDER_DISTANCE.get() > 0 ? viewDistance : 0);
         lighting.vectors("LightPositionRange",positions);lighting.vectors("LightColorIntensity",colors);
         lighting.vectors("LightDirectionOuter",directions);lighting.vectors("LightUpInner",ups);
@@ -370,6 +432,7 @@ public final class OpenLightRenderer {
         texture(2,GL11.GL_TEXTURE_2D,TARGETS.opaqueDepth);
         composite.integer("SceneColor",0);composite.integer("LightTexture",1);composite.integer("OpaqueDepth",2);
         composite.integer("ReplaceLighting", replacementFrame ? 1 : 0);
+        composite.integer("KeepNativeSky", nativeSkyFrame ? 1 : 0);
         composite.integer("BlockLightStyle",WORLD_LIGHT.aggregates().analytic()?1:0);
         composite.scalar("BlockLightIntensity",2f*ClientConfig.INTENSITY_MULTIPLIER.get().floatValue()*ClientConfig.BLOCK_LIGHT_EXPOSURE.get().floatValue());
         WORLD_TEXTURE.bind(composite, "World", 3, WORLD_LIGHT.grid(), scene.origin());
@@ -384,6 +447,8 @@ public final class OpenLightRenderer {
         composite.vec3("CameraLocal", (float)cameraLocal.x, (float)cameraLocal.y, (float)cameraLocal.z);
         composite.vec2("LightTexel",1f/TARGETS.lightWidth,1f/TARGETS.lightHeight);
         composite.scalar("BloomStrength",ClientConfig.BLOOM_STRENGTH.get().floatValue());
+        // Beyond every selected fog bound, sky and terrain share the complete foreground interval.
+        composite.scalar("UnclippedFogDistance", Math.min(viewRayLength, Math.nextUp((float)Math.sqrt(fogDistanceSquared))));
         drawScreen();
         statistics=new Statistics(index,passes,vertexCount/3,media.size(),0,gpuMillis);
     }
@@ -465,7 +530,10 @@ public final class OpenLightRenderer {
         FRAME_LIGHTS.clear();SHADOWS.clear();SCENE.clear();OpenLightsApi.clear();
         WORLD_LIGHT.clear(); INDIRECT.clear(); indirectSources = List.of();
         com.cappleapple.openlights.client.scene.ColoredLightCache.INSTANCE.clear();
-        replacementFrame = false; worldPass = false;
+        replacementFrame = false; worldPass = false; nativeSkyFrame = false;
+        NativeSkyLightmap.close(); skyLightmap = 0;
+        DistantHorizonsCompatibility.clearFrame();
+        distantDepthMerged = false; distantDepthTexture = 0;
         cacheTick = 0;
         uploadedRevision=Long.MIN_VALUE;depthReady=false;matricesReady=false;
     }

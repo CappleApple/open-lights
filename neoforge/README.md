@@ -29,6 +29,8 @@ The [client API](docs/api.md) supports persistent handles and per-frame light su
 
 See [Sodium and Iris verification](docs/renderer-compatibility.md) for tested versions and caveats. An active Iris shader pack uses additive lighting/GI and bypasses Open Lights-style world replacement and aggregation.
 
+The optional [Distant Horizons adapter](../docs/distant-horizons.md) preserves LOD terrain's native lighting and uses its depth for analytic receivers and volumetric clipping. Normal chunks retain the selected Open Lights style. No additional setting or API JAR is required. See [1.8.3 verification](../docs/verification-1.8.3.md) for validation status and scope.
+
 ## Build and verification
 
 Run from this directory with Java 21:
