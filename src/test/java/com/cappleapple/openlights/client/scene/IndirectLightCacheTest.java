@@ -1,4 +1,4 @@
-package com.cappleapple.openlights.client.scene;
+package com.cappleapple.openlights.gi.client.scene;
 
 import com.cappleapple.openlights.api.client.LightDefinition;
 import com.cappleapple.openlights.beam.BeamProfile;

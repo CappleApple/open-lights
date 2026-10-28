@@ -1,6 +1,6 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.scene.ProbeGrid;
+import com.cappleapple.openlights.gi.client.scene.ProbeGrid;
 import com.mojang.logging.LogUtils;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
@@ -56,7 +56,7 @@ final class TextureUploadRegression {
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer);
             glBufferData(GL_PIXEL_UNPACK_BUFFER, 4096, GL_STATIC_DRAW);
             glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-            var type = Class.forName("com.cappleapple.openlights.client.render.ProbeTexture");
+            var type = Class.forName("com.cappleapple.openlights.gi.client.render.ProbeTexture");
             var constructor = type.getDeclaredConstructor(); constructor.setAccessible(true);
             texture = (AutoCloseable)constructor.newInstance();
             var upload = type.getDeclaredMethod("upload", ProbeGrid.class, long.class); upload.setAccessible(true);

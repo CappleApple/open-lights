@@ -1,9 +1,9 @@
 package com.cappleapple.openlights.qa;
 import com.cappleapple.openlights.api.client.*;
 import com.cappleapple.openlights.beam.BeamProfiles;
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -36,7 +36,7 @@ public final class SupplementalHarness {
         mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.0);mc.options.pauseOnLostFocus=false;
         if(!loading&&mc.screen instanceof TitleScreen title){loading=true;QaBootstrap.open(title);}
         if(!started&&mc.player!=null&&mc.screen==null) {
-            started=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);ClientConfig.RENDER_SCALE.set(.25);
+            started=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);GlobalIlluminationConfig.RENDER_SCALE.set(.25);
             for(var preset:LightingBudgets.values()){preset.apply();if(LightingBudgets.current()!=preset)throw new IllegalStateException("Preset round trip "+preset);}
             LightingBudgets.BALANCED.apply();
             mc.getSingleplayerServer().execute(()->{
@@ -72,25 +72,25 @@ public final class SupplementalHarness {
         Screenshot.grab(mc.gameDirectory,"extra-"+NAMES[stage]+".png",mc.getMainRenderTarget(),m->{});
         LogUtils.getLogger().info("EXTRA_PASS {} {}",NAMES[stage],stats);stage++;ticks=0;
         switch(stage) {
-            case 1->ClientConfig.RENDER_SCALE.set(1.0);
-            case 2->ClientConfig.VOLUMETRIC_STEPS.set(0);
-            case 3->ClientConfig.VOLUMETRIC_STEPS.set(24);
-            case 4->ClientConfig.BLOOM_STRENGTH.set(0.0);
-            case 5->ClientConfig.BLOOM_STRENGTH.set(2.0);
-            case 6->ClientConfig.MAX_LIGHTS.set(1);
-            case 7->{ClientConfig.MAX_LIGHTS.set(8);ClientConfig.MAX_SHADOW_LIGHTS.set(0);}
-            case 8->{ClientConfig.MAX_SHADOW_LIGHTS.set(4);ClientConfig.SHADOW_RESOLUTION.set(2048);}
-            case 9->{ClientConfig.SHADOW_RESOLUTION.set(64);ClientConfig.MAX_MEDIA.set(0);}
-            case 10->ClientConfig.MAX_MEDIA.set(32);
+            case 1->GlobalIlluminationConfig.RENDER_SCALE.set(1.0);
+            case 2->GlobalIlluminationConfig.VOLUMETRIC_STEPS.set(0);
+            case 3->GlobalIlluminationConfig.VOLUMETRIC_STEPS.set(24);
+            case 4->GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);
+            case 5->GlobalIlluminationConfig.BLOOM_STRENGTH.set(2.0);
+            case 6->GlobalIlluminationConfig.MAX_LIGHTS.set(1);
+            case 7->{GlobalIlluminationConfig.MAX_LIGHTS.set(8);GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(0);}
+            case 8->{GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(4);GlobalIlluminationConfig.SHADOW_RESOLUTION.set(2048);}
+            case 9->{GlobalIlluminationConfig.SHADOW_RESOLUTION.set(64);GlobalIlluminationConfig.MAX_MEDIA.set(0);}
+            case 10->GlobalIlluminationConfig.MAX_MEDIA.set(32);
             case 11->{handles.forEach(LightHandle::close);eventSource=true;}
-            case 12->{eventSource=false;ClientConfig.PERIODIC_CACHE_REFRESH.set(true);ClientConfig.MEDIUM_UPDATE_TICKS.set(1);}
-            case 13->{ClientConfig.PERIODIC_CACHE_REFRESH.set(false);handles.clear();handles.add(OpenLightsApi.create(ResourceLocation.fromNamespaceAndPath("openlights","lifecycle"),definition(0)));revision=BeamProfiles.clientRevision();travel(Level.NETHER);}
+            case 12->{eventSource=false;GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(true);GlobalIlluminationConfig.MEDIUM_UPDATE_TICKS.set(1);}
+            case 13->{GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);handles.clear();handles.add(OpenLightsApi.create(ResourceLocation.fromNamespaceAndPath("openlights","lifecycle"),definition(0)));revision=BeamProfiles.clientRevision();travel(Level.NETHER);}
             case 14->travel(Level.OVERWORLD);
             case 15->{handles.add(OpenLightsApi.create(ResourceLocation.fromNamespaceAndPath("openlights","reload"),definition(0)));mc.reloadResourcePacks();}
-            case 16->ClientConfig.ENABLED.set(false);
-            case 17->ClientConfig.ENABLED.set(true);
+            case 16->GlobalIlluminationConfig.ENABLED.set(false);
+            case 17->GlobalIlluminationConfig.ENABLED.set(true);
             case 18->{mc.level.disconnect();mc.disconnect();mc.setScreen(new TitleScreen());}
-            default->{ClientConfig.RENDER_SCALE.set(.5);ClientConfig.VOLUMETRIC_STEPS.set(12);ClientConfig.BLOOM_STRENGTH.set(.08);ClientConfig.SHADOW_RESOLUTION.set(256);LogUtils.getLogger().info("EXTRA_SUCCESS presets, rendering controls, frame submissions, dimension/reload/disconnect lifecycle");}
+            default->{GlobalIlluminationConfig.RENDER_SCALE.set(.5);GlobalIlluminationConfig.VOLUMETRIC_STEPS.set(12);GlobalIlluminationConfig.BLOOM_STRENGTH.set(.08);GlobalIlluminationConfig.SHADOW_RESOLUTION.set(256);LogUtils.getLogger().info("EXTRA_SUCCESS presets, rendering controls, frame submissions, dimension/reload/disconnect lifecycle");}
         }
     }
     private static LightDefinition definition(int i){return new LightDefinition.Point(new Vec3(-2+i*2,164,4),new Vec3(i==0?1:.1,i==1?1:.1,i==2?1:.1),2,24,true,.7f);}

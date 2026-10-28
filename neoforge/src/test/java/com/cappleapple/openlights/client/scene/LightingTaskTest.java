@@ -1,4 +1,4 @@
-package com.cappleapple.openlights.client.scene;
+package com.cappleapple.openlights.gi.client.scene;
 
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.*;

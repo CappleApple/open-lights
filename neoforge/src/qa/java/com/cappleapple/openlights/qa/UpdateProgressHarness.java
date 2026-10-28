@@ -1,8 +1,8 @@
 package com.cappleapple.openlights.qa;
 
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -38,12 +38,12 @@ public final class UpdateProgressHarness {
         }
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
         if(!moved) {
-            moved=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.PERIODIC_CACHE_REFRESH.set(false);ClientConfig.AGGREGATE_ENABLED.set(true);
-            ClientConfig.AGGREGATE_CELLS_PER_TICK.set(8192);ClientConfig.AGGREGATE_BUDGET_MILLIS.set(1.0);
-            ClientConfig.AGGREGATE_APPLY_SECTIONS.set(1);ClientConfig.LIGHT_UPLOAD_SECTIONS.set(1);
+            moved=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);
+            GlobalIlluminationConfig.AGGREGATE_CELLS_PER_TICK.set(8192);GlobalIlluminationConfig.AGGREGATE_BUDGET_MILLIS.set(1.0);
+            GlobalIlluminationConfig.AGGREGATE_APPLY_SECTIONS.set(1);GlobalIlluminationConfig.LIGHT_UPLOAD_SECTIONS.set(1);
             mc.getSingleplayerServer().execute(()->{
                 var server=mc.getSingleplayerServer();var p=server.getPlayerList().getPlayer(mc.player.getUUID());
                 p.setGameMode(GameType.SPECTATOR);p.teleportTo(p.serverLevel(),512.5,169,496.5,0,20);
@@ -106,7 +106,7 @@ public final class UpdateProgressHarness {
             level.setBlock(new BlockPos(512+x,y,512+z),(present?Blocks.GLOWSTONE:Blocks.AIR).defaultBlockState(),3);
     }
     private static WorldLightCache world() {
-        try {var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}
+        try {var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}
         catch(ReflectiveOperationException failure){throw new IllegalStateException(failure);}
     }
 }

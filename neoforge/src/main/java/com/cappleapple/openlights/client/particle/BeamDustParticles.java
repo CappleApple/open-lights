@@ -3,7 +3,7 @@ package com.cappleapple.openlights.client.particle;
 import com.cappleapple.openlights.api.client.LightDefinition;
 import com.cappleapple.openlights.api.client.LightKey;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.content.ModContent;
+import com.cappleapple.openlights.content.ParticleContent;
 import com.cappleapple.openlights.config.ClientConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.ParticleStatus;
@@ -28,7 +28,7 @@ public final class BeamDustParticles {
     private BeamDustParticles() {}
 
     public static void registerProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(ModContent.BEAM_DUST.get(), sprites ->
+        event.registerSpriteSet(ParticleContent.BEAM_DUST.get(), sprites ->
                 (type, level, x, y, z, dx, dy, dz) -> new BeamDustParticle(level, x, y, z, dx, dy, dz, sprites));
     }
 
@@ -88,7 +88,7 @@ public final class BeamDustParticles {
         if (BeamDustSampling.color(beam, position, intensityMultiplier).lengthSqr() < .00000001
                 || !BeamDustOcclusion.clear(world, beam.position(), position)) return;
         double drift = dust.speed();
-        var created = mc.particleEngine.createParticle(ModContent.BEAM_DUST.get(), position.x, position.y, position.z,
+        var created = mc.particleEngine.createParticle(ParticleContent.BEAM_DUST.get(), position.x, position.y, position.z,
                 (random.nextDouble() * 2 - 1) * drift, (random.nextDouble() * 2 - 1) * drift,
                 (random.nextDouble() * 2 - 1) * drift);
         if (created instanceof BeamDustParticle particle) {

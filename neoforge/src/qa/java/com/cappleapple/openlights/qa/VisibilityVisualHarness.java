@@ -2,9 +2,9 @@ package com.cappleapple.openlights.qa;
 
 import com.cappleapple.openlights.api.client.*;
 import com.cappleapple.openlights.beam.BeamProfile;
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -44,12 +44,12 @@ public final class VisibilityVisualHarness {
         }
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
         if(!moved) {
-            moved=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.BLOOM_STRENGTH.set(0.0);ClientConfig.VOLUMETRIC_STEPS.set(12);
-            ClientConfig.MAX_LIGHTS.set(8);ClientConfig.MAX_SHADOW_LIGHTS.set(4);
-            ClientConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
+            moved=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);GlobalIlluminationConfig.VOLUMETRIC_STEPS.set(12);
+            GlobalIlluminationConfig.MAX_LIGHTS.set(8);GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(4);
+            GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
             pose(505.5,0);
         }
         ticks++;total++;

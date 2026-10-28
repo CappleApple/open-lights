@@ -3,7 +3,7 @@ package com.cappleapple.openlights.client.particle;
 import com.cappleapple.openlights.api.client.LightDefinition;
 import com.cappleapple.openlights.api.client.LightKey;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.content.ModContent;
+import com.cappleapple.openlights.content.ParticleContent;
 import com.cappleapple.openlights.config.ClientConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.ParticleStatus;
@@ -29,7 +29,7 @@ public final class BeamDustParticles {
     private BeamDustParticles() {}
 
     public static void registerProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(ModContent.BEAM_DUST.get(), sprites -> {
+        event.registerSpriteSet(ParticleContent.BEAM_DUST.get(), sprites -> {
             dustSprites = sprites;
             return (type, level, x, y, z, dx, dy, dz) -> new BeamDustParticle(level, x, y, z, dx, dy, dz, sprites);
         });

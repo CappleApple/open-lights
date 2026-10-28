@@ -1,5 +1,7 @@
 package com.cappleapple.openlights.qa;
-import com.cappleapple.openlights.content.*;
+import com.cappleapple.openlights.flashlight.FlashlightContent;
+import com.cappleapple.openlights.gi.content.*;
+import com.cappleapple.openlights.flashlight.FlashlightItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -22,8 +24,8 @@ final class NativeAssertions {
             var recipe=level.getRecipeManager().byKey(key).orElseThrow(()->new IllegalStateException("Missing recipe "+key));
             if(recipe.value().getResultItem(registries).isEmpty())throw new IllegalStateException("Empty recipe "+key);
         }
-        var flashlight=new ItemStack(ModContent.FLASHLIGHT.get());player.setItemInHand(InteractionHand.MAIN_HAND,flashlight);
-        ModContent.FLASHLIGHT.get().use(level,player,InteractionHand.MAIN_HAND);
+        var flashlight=new ItemStack(FlashlightContent.FLASHLIGHT.get());player.setItemInHand(InteractionHand.MAIN_HAND,flashlight);
+        FlashlightContent.FLASHLIGHT.get().use(level,player,InteractionHand.MAIN_HAND);
         var saved=flashlight.save(registries);
         if(!FlashlightItem.isEnabled(ItemStack.parse(registries,saved).orElseThrow()))throw new IllegalStateException("Flashlight component save/load failed");
         for(var block:new LightSourceBlock[]{ModContent.POINT_LIGHT.get(),ModContent.SPOT_LIGHT.get(),ModContent.AREA_LIGHT.get()}) {

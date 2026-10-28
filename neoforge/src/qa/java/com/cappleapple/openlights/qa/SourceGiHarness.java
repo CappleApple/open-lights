@@ -1,10 +1,10 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.IndirectLightCache;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.IndirectLightCache;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -34,7 +34,7 @@ public final class SourceGiHarness {
         var mc=Minecraft.getInstance();mc.options.pauseOnLostFocus=false;mc.options.getSoundSourceOptionInstance(SoundSource.MASTER).set(0.0);mc.mouseHandler.releaseMouse();GLFW.glfwHideWindow(mc.getWindow().getWindow());
         if(!loading&&mc.screen instanceof TitleScreen title){loading=true;mc.options.renderDistance().set(6);mc.options.framerateLimit().set(60);mc.options.hideGui=true;QaBootstrap.open(title);}
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
-        if(!moved){moved=true;ClientConfig.ENABLED.set(true);ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);ClientConfig.AGGREGATE_ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);ClientConfig.GI_BLOCK_LIGHT.set(true);ClientConfig.GI_SPACING.set(4);ClientConfig.GI_TRACE_DISTANCE.set(8.0);ClientConfig.GI_REFRESH_TICKS.set(1);ClientConfig.GI_PROBES_PER_TICK.set(64);ClientConfig.GI_BUDGET_MILLIS.set(8.0);ClientConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
+        if(!moved){moved=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);GlobalIlluminationConfig.GI_BLOCK_LIGHT.set(true);GlobalIlluminationConfig.GI_SPACING.set(4);GlobalIlluminationConfig.GI_TRACE_DISTANCE.set(8.0);GlobalIlluminationConfig.GI_REFRESH_TICKS.set(1);GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(64);GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(8.0);GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
             mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());p.setGameMode(GameType.SPECTATOR);p.teleportTo(p.serverLevel(),512.5,164,503.5,0,0);});}
         ticks++;
         if(!prepared&&ticks>100&&mc.level.hasChunk(32,32)){prepared=true;mc.getSingleplayerServer().execute(()->{
@@ -48,10 +48,10 @@ public final class SourceGiHarness {
     @SubscribeEvent public static void render(RenderFrameEvent.Post event){
         if(!Boolean.getBoolean("openlights.sourceGiSmoke")||!built||stage>=4)return;
         var mc=Minecraft.getInstance();var a=world().aggregates();var gi=gi();var stats=OpenLightRenderer.cacheStatistics();
-        if(stage==0&&ticks>160&&!stats.aggregatePending()&&!stats.lightUploadsPending()&&stats.blockPending()==0){ClientConfig.GI_ENABLED.set(true);stage=1;ticks=0;}
+        if(stage==0&&ticks>160&&!stats.aggregatePending()&&!stats.lightUploadsPending()&&stats.blockPending()==0){GlobalIlluminationConfig.GI_ENABLED.set(true);stage=1;ticks=0;}
         else if(stage==1&&gi.grid()!=null&&gi.grid().ready()&&gi.far().ready()&&gi.updated()==0){
             before=energy();if(before<.01||gi.sourceChannels()<2)throw new IllegalStateException("No per-source GI: "+before+" columns="+gi.sourceChannels());
-            capture("source-gi-before");ClientConfig.GI_REFRESH_TICKS.set(200);ClientConfig.GI_PROBES_PER_TICK.set(1);stage=2;ticks=0;
+            capture("source-gi-before");GlobalIlluminationConfig.GI_REFRESH_TICKS.set(200);GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(1);stage=2;ticks=0;
             mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().overworld().setBlock(SOURCE,Blocks.AIR.defaultBlockState(),3));
         }else if(stage==2&&mc.level.getBlockState(SOURCE).isAir()&&energy()<before*.9){
             if(gi.updated()!=0)throw new IllegalStateException("Removal waited for probe traces");
@@ -62,9 +62,9 @@ public final class SourceGiHarness {
             capture("source-gi-removed");LogUtils.getLogger().info("SOURCE_GI_SUCCESS cached removal bypasses 200-tick probe age and retains other source; cache={}",stats);stage=4;ticks=0;
         }
     }
-    private static double energy(){var g=gi();double total=0;for(var grid:new com.cappleapple.openlights.client.scene.ProbeGrid[]{g.grid(),g.far()})if(grid!=null)for(int i=0;i<grid.data.length;i++)if(i%4!=3)total+=grid.data[i];return total;}
+    private static double energy(){var g=gi();double total=0;for(var grid:new com.cappleapple.openlights.gi.client.scene.ProbeGrid[]{g.grid(),g.far()})if(grid!=null)for(int i=0;i<grid.data.length;i++)if(i%4!=3)total+=grid.data[i];return total;}
     private static void capture(String name){var mc=Minecraft.getInstance();Screenshot.grab(mc.gameDirectory,name+".png",mc.getMainRenderTarget(),m->{});}
-    private static Object field(String name){try{var f=OpenLightRenderer.class.getDeclaredField(name);f.setAccessible(true);return f.get(null);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
+    private static Object field(String name){try{var f=(name.equals("WORLD_LIGHT") || name.equals("INDIRECT") || name.equals("skyLightmap") ? com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class : OpenLightRenderer.class).getDeclaredField(name);f.setAccessible(true);return f.get(null);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
     private static WorldLightCache world(){return (WorldLightCache)field("WORLD_LIGHT");}
     private static IndirectLightCache gi(){return (IndirectLightCache)field("INDIRECT");}
 }

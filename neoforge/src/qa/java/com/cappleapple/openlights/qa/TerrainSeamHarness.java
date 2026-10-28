@@ -1,8 +1,8 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -62,9 +62,9 @@ public final class TerrainSeamHarness {
         }
         if(mc.player==null || mc.getSingleplayerServer()==null || mc.screen!=null)return;
         if(!started) {
-            started=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);ClientConfig.BLOOM_STRENGTH.set(0.0);
+            started=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);
             LightingBudgets.RAPID.apply();apply(FIRST_STAGE);pose(0,FULL?384:160);
         }
         ticks++;total++;
@@ -187,7 +187,7 @@ public final class TerrainSeamHarness {
     }
 
     private static Object rendererField(String name) {
-        try{var field=OpenLightRenderer.class.getDeclaredField(name);field.setAccessible(true);return field.get(null);}
+        try{var field=(name.equals("WORLD_LIGHT") || name.equals("INDIRECT") || name.equals("skyLightmap") ? com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class : OpenLightRenderer.class).getDeclaredField(name);field.setAccessible(true);return field.get(null);}
         catch(ReflectiveOperationException error){throw new IllegalStateException(error);}
     }
 
@@ -224,7 +224,7 @@ public final class TerrainSeamHarness {
     }
 
     private static int rendererFieldOptional(String name) {
-        try{var field=OpenLightRenderer.class.getDeclaredField(name);field.setAccessible(true);return field.getInt(null);}
+        try{var field=(name.equals("WORLD_LIGHT") || name.equals("INDIRECT") || name.equals("skyLightmap") ? com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class : OpenLightRenderer.class).getDeclaredField(name);field.setAccessible(true);return field.getInt(null);}
         catch(NoSuchFieldException expectedBaseline){return 0;}catch(ReflectiveOperationException error){throw new IllegalStateException(error);}
     }
 
@@ -264,8 +264,8 @@ public final class TerrainSeamHarness {
 
     private static void apply(int index) {
         var phase=PHASES[index];var mc=Minecraft.getInstance();fade(phase.fade());
-        ClientConfig.ENABLED.set(phase.enabled());ClientConfig.GI_ENABLED.set(phase.gi());
-        ClientConfig.LIGHTING_MODE.set(phase.additive()?ClientConfig.LightingMode.ADDITIVE:ClientConfig.LightingMode.CACHED);
+        GlobalIlluminationConfig.ENABLED.set(phase.enabled());GlobalIlluminationConfig.GI_ENABLED.set(phase.gi());
+        GlobalIlluminationConfig.LIGHTING_MODE.set(phase.additive()?GlobalIlluminationConfig.LightingMode.ADDITIVE:GlobalIlluminationConfig.LightingMode.CACHED);
         DistantHorizonsHarness.setConfig(graphics,"renderingEnabled",phase.dh());
         DistantHorizonsHarness.setConfig(DistantHorizonsHarness.call(graphics,"fog"),"enableDhFog",phase.fog());
         mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().overworld().setDayTime(phase.night()?18000:6000));

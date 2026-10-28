@@ -26,6 +26,7 @@ abstract class ClientChunkCacheMixin {
 
     @Inject(method = "onLightUpdate", at = @At("RETURN"))
     private void openlights$lightChanged(LightLayer layer, SectionPos section, CallbackInfo ci) {
+        if (!OpenLightRenderer.hasWorldLightingExtension()) return;
         var world = level;
         Minecraft.getInstance().execute(() -> {
             if (Minecraft.getInstance().level == world) OpenLightRenderer.invalidateLightSection(layer, section);
@@ -47,6 +48,7 @@ abstract class ClientChunkCacheMixin {
 
     @Inject(method = "updateViewRadius", at = @At("RETURN"))
     private void openlights$viewRadiusChanged(int radius, CallbackInfo ci) {
+        if (!OpenLightRenderer.hasActiveLighting()) return;
         var world = level;
         Minecraft.getInstance().execute(() -> {
             if (Minecraft.getInstance().level == world) OpenLightRenderer.invalidate(-30_000_000,
@@ -55,6 +57,7 @@ abstract class ClientChunkCacheMixin {
     }
 
     private void openlights$chunkChanged(int x, int z) {
+        if (!OpenLightRenderer.hasActiveLighting()) return;
         var world = level;
         Minecraft.getInstance().execute(() -> {
             if (Minecraft.getInstance().level == world) OpenLightRenderer.invalidate(x * 16,

@@ -1,5 +1,7 @@
 # Beam profiles
 
+In 2.0, profile synchronization stays in the Open Lights library. The handheld item requires Open Lights Flashlight; placed spot lights require OL Global Illumination. Their profile IDs and datapack paths remain unchanged.
+
 Open Lights 1.1.0 reads beam appearance from server configuration and datapacks. The server sends the resolved profiles to clients when they join and after `/reload`.
 
 Profiles apply to TaCZ attachment flashlights, the `openlights:flashlight` item, and placed `openlights:spot_light` blocks. Point and area lights do not use these profiles.

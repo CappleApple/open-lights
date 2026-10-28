@@ -3,9 +3,9 @@ package com.cappleapple.openlights.qa;
 import com.cappleapple.openlights.api.client.LightDefinition;
 import com.cappleapple.openlights.api.client.LightHandle;
 import com.cappleapple.openlights.api.client.OpenLightsApi;
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -73,11 +73,11 @@ public final class DistantHorizonsHarness {
         if(mc.player == null || mc.getSingleplayerServer() == null || mc.screen != null) return;
         if(!configured) {
             configured = true;
-            ClientConfig.ENABLED.set(false);
-            ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);
-            ClientConfig.BLOOM_STRENGTH.set(0.0);
+            GlobalIlluminationConfig.ENABLED.set(false);
+            GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);
+            GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);
             LightingBudgets.RAPID.apply();
             pose(0.5, 368.5);
         }
@@ -151,19 +151,19 @@ public final class DistantHorizonsHarness {
         ticks=0;
         stage++;
         switch(stage) {
-            case 1 -> ClientConfig.ENABLED.set(true);
+            case 1 -> GlobalIlluminationConfig.ENABLED.set(true);
             case 2 -> createLights();
-            case 3 -> ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.ADDITIVE);
-            case 4 -> {ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);reload=mc.reloadResourcePacks();}
+            case 3 -> GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.ADDITIVE);
+            case 4 -> {GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);reload=mc.reloadResourcePacks();}
             case 5 -> GLFW.glfwSetWindowSize(mc.getWindow().getWindow(),1024,640);
             case 6 -> setConfig(graphics,"renderingEnabled",false);
             case 7 -> setConfig(graphics,"renderingEnabled",true);
             case 8 -> {
                 if(light!=null)light.close();if(beam!=null)beam.close();
-                ClientConfig.ENABLED.set(false);
+                GlobalIlluminationConfig.ENABLED.set(false);
                 mc.getSingleplayerServer().execute(() -> mc.getSingleplayerServer().overworld().setDayTime(18000));
             }
-            case 9 -> ClientConfig.ENABLED.set(true);
+            case 9 -> GlobalIlluminationConfig.ENABLED.set(true);
             default -> {
                 if(light!=null) light.close();
                 if(beam!=null) beam.close();

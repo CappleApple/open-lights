@@ -1,10 +1,14 @@
 package com.cappleapple.openlights.qa;
 
+import com.cappleapple.openlights.gi.client.*;
+import com.cappleapple.openlights.flashlight.FlashlightContent;
+
 import com.cappleapple.openlights.beam.BeamProfiles;
 import com.cappleapple.openlights.client.*;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
-import com.cappleapple.openlights.content.*;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
+import com.cappleapple.openlights.gi.content.*;
+import com.cappleapple.openlights.flashlight.FlashlightItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -37,14 +41,14 @@ public final class ClientOnlyHarness {
         if(mc.player==null||ticks<200||(mc.screen!=null&&stage!=5))return;
         switch(stage){
             case 0->{
-                absent();compatibility();TextureUploadRegression.managedBindings();ClientConfig.ENABLED.set(false);ClientConfig.GI_ENABLED.set(true);ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-                ClientConfig.AGGREGATE_ENABLED.set(true);ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);LightingBudgets.FAST.apply();
+                absent();compatibility();TextureUploadRegression.managedBindings();GlobalIlluminationConfig.ENABLED.set(false);GlobalIlluminationConfig.GI_ENABLED.set(true);GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+                GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);LightingBudgets.FAST.apply();
                 commands("gamemode creative","gamerule doDaylightCycle false","time set midnight","fill -10 160 0 10 170 24 stone hollow","fill -8 161 9 8 168 9 purple_stained_glass","fill -1 161 14 1 163 16 glowstone","tp @s 0.5 161 2.5 0 15","clear @s","give @s deepslate");
             }
             case 1->{
-                capture("native");ClientConfig.ENABLED.set(true);
+                capture("native");GlobalIlluminationConfig.ENABLED.set(true);
                 // Attempt stale saved-hotbar items. Neither packet is valid on this server.
-                mc.gameMode.handleCreativeModeItemAdd(new net.minecraft.world.item.ItemStack(ModContent.FLASHLIGHT.get()),36);
+                mc.gameMode.handleCreativeModeItemAdd(new net.minecraft.world.item.ItemStack(FlashlightContent.FLASHLIGHT.get()),36);
                 mc.gameMode.handleCreativeModeItemDrop(new net.minecraft.world.item.ItemStack(ModContent.POINT_LIGHT.get()));
                 mc.gameMode.handleCreativeModeItemAdd(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND),37);
             }
@@ -53,7 +57,7 @@ public final class ClientOnlyHarness {
                 if((!shaderPack()&&(cache.aggregatePending()||cache.blockPending()!=0))||ticks<400)return;
                 lighting();
                 if(!shaderPack())require(cache.blockSections()>0&&cache.aggregateCells()>0,"Replacement caches did not populate: "+cache);
-                capture("openlights");if(!Boolean.getBoolean("openlights.openStyleOnly"))ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.MINECRAFT);
+                capture("openlights");if(!Boolean.getBoolean("openlights.openStyleOnly"))GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.MINECRAFT);
             }
             case 3->{absent();capture(Boolean.getBoolean("openlights.openStyleOnly")?"openlights-settled":"minecraft");mc.reloadResourcePacks();}
             case 4->{absent();lighting();mc.setScreen(new LightingSettingsScreen(null));}
@@ -64,7 +68,7 @@ public final class ClientOnlyHarness {
                 require(!ServerLightingSupport.isClientOnly()&&BeamProfiles.clientRevision()>0,"Full server capability/profile missing");tabs(true);
                 commands("gamemode creative","fill -7 160 -2 7 160 18 stone","tp @s 0.5 161 -1 0 0","setblock 0 162 4 openlights:point_light{Color:3381759,Enabled:1b}","clear @s","give @s openlights:flashlight");
             }
-            case 9->{require(mc.level.getBlockEntity(new BlockPos(0,162,4)) instanceof LightSourceBlockEntity,"Full server content missing");require(mc.player.getMainHandItem().is(ModContent.FLASHLIGHT.get()),"Full server item missing");mc.gameMode.useItem(mc.player,InteractionHand.MAIN_HAND);}
+            case 9->{require(mc.level.getBlockEntity(new BlockPos(0,162,4)) instanceof LightSourceBlockEntity,"Full server content missing");require(mc.player.getMainHandItem().is(FlashlightContent.FLASHLIGHT.get()),"Full server item missing");mc.gameMode.useItem(mc.player,InteractionHand.MAIN_HAND);}
             case 10->{modelsPresent();require(FlashlightItem.isEnabled(mc.player.getMainHandItem()),"Full server toggle failed");capture("full-server");disconnect();connect(absentPort());}
             case 11->{absent();lighting();capture("rejoined");if(Boolean.getBoolean("openlights.openStyleOnly")&&Boolean.getBoolean("openlights.expectShaderPack"))toggleShaders(false);else success();}
             case 12->{
@@ -97,7 +101,7 @@ public final class ClientOnlyHarness {
     }
     private static void lighting(){
         compatibility();var cache=OpenLightRenderer.cacheStatistics();
-        if(Boolean.getBoolean("openlights.openStyleOnly"))require(ClientConfig.BLOCK_LIGHT_STYLE.get()==ClientConfig.BlockLightStyle.OPEN_LIGHTS,"Open Lights style changed during test");
+        if(Boolean.getBoolean("openlights.openStyleOnly"))require(GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.get()==GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS,"Open Lights style changed during test");
         require(cache.replacement()!=shaderPack()&&cache.giProbes()>0,"Lighting ownership or GI incorrect: "+cache);
     }
     private static void modelsPresent(){

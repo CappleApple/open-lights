@@ -4,7 +4,7 @@ import org.lwjgl.opengl.*;
 import org.lwjgl.system.MemoryStack;
 
 /** Restore every OpenGL binding/state touched by our passes, including Minecraft's cached state. */
-final class GlState implements AutoCloseable {
+public final class GlState implements AutoCloseable {
     private final int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
     private final int vao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
     private final int buffer = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
@@ -28,7 +28,7 @@ final class GlState implements AutoCloseable {
     private final int depthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
     private final boolean[] colorMask = new boolean[4];
 
-    GlState() {
+    public GlState() {
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
         try (var stack = MemoryStack.stackPush()) {
             var mask = stack.malloc(4);

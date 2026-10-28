@@ -1,9 +1,9 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingSettingsScreen;
+import com.cappleapple.openlights.gi.client.LightingSettingsScreen;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -45,12 +45,12 @@ public final class AggregateVisualHarness {
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
         if(!teleported) {
             teleported=true;
-            ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.PERIODIC_CACHE_REFRESH.set(false);ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.MINECRAFT);
-            ClientConfig.AGGREGATE_ENABLED.set(true);ClientConfig.AGGREGATE_MULTIPLIER.set(3.0);
-            ClientConfig.AGGREGATE_STRENGTH.set(1.0);
-            ClientConfig.AGGREGATE_APPLY_SECTIONS.set(2);ClientConfig.LIGHT_UPLOAD_SECTIONS.set(1);
+            GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.MINECRAFT);
+            GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);GlobalIlluminationConfig.AGGREGATE_MULTIPLIER.set(3.0);
+            GlobalIlluminationConfig.AGGREGATE_STRENGTH.set(1.0);
+            GlobalIlluminationConfig.AGGREGATE_APPLY_SECTIONS.set(2);GlobalIlluminationConfig.LIGHT_UPLOAD_SECTIONS.set(1);
             var id=mc.player.getUUID();
             mc.getSingleplayerServer().execute(()->{
                 var player=mc.getSingleplayerServer().getPlayerList().getPlayer(id);
@@ -66,7 +66,7 @@ public final class AggregateVisualHarness {
         var metrics=OpenLightRenderer.cacheStatistics();
         maximumCaptured=Math.max(maximumCaptured,metrics.snapshotCells());
         maximumApplied=Math.max(maximumApplied,metrics.appliedSections());
-        if(metrics.snapshotCells()>ClientConfig.AGGREGATE_CELLS_PER_TICK.get()||metrics.appliedSections()>ClientConfig.AGGREGATE_APPLY_SECTIONS.get())
+        if(metrics.snapshotCells()>GlobalIlluminationConfig.AGGREGATE_CELLS_PER_TICK.get()||metrics.appliedSections()>GlobalIlluminationConfig.AGGREGATE_APPLY_SECTIONS.get())
             throw new IllegalStateException("Lighting exceeded snapshot/adoption count budget: "+metrics);
         if(!prepared&&ticks>120&&mc.player.getX()>500&&mc.level.hasChunk((X+52)>>4,(Z+52)>>4)) {
             prepared=true;ticks=0;
@@ -101,7 +101,7 @@ public final class AggregateVisualHarness {
         if(!Boolean.getBoolean("openlights.aggregateSmoke"))return;
         var mc=Minecraft.getInstance();var cache=OpenLightRenderer.cacheStatistics();
         maximumUploads=Math.max(maximumUploads,cache.lightUploads());
-        if(teleported&&cache.lightUploads()>ClientConfig.LIGHT_UPLOAD_SECTIONS.get())throw new IllegalStateException("Lighting exceeded per-frame upload count budget: "+cache);
+        if(teleported&&cache.lightUploads()>GlobalIlluminationConfig.LIGHT_UPLOAD_SECTIONS.get())throw new IllegalStateException("Lighting exceeded per-frame upload count budget: "+cache);
         if(stage<0||stage>=NAMES.length||ticks<160)return;
         if(stage!=7&&(cache.aggregatePending()||cache.blockPending()!=0||cache.lightUploadsPending()))return;
         if((stage==2||stage==3)&&(cache.giProbes()<125||cache.farGiProbes()<729||cache.giUpdated()!=0))return;
@@ -124,27 +124,27 @@ public final class AggregateVisualHarness {
         if(stage==1&&!worker.equals("OpenLights-lighting"))throw new IllegalStateException("Propagation did not run on lighting worker: "+worker);
         Screenshot.grab(mc.gameDirectory,"aggregate-"+NAMES[stage]+".png",mc.getMainRenderTarget(),m->{});
         if(stage==7) {
-            double capture=ClientConfig.AGGREGATE_BUDGET_MILLIS.get(),upload=ClientConfig.LIGHT_UPLOAD_MILLIS.get();
-            int cells=ClientConfig.AGGREGATE_CELLS_PER_TICK.get();
+            double capture=GlobalIlluminationConfig.AGGREGATE_BUDGET_MILLIS.get(),upload=GlobalIlluminationConfig.LIGHT_UPLOAD_MILLIS.get();
+            int cells=GlobalIlluminationConfig.AGGREGATE_CELLS_PER_TICK.get();
             for(var child:mc.screen.children())if(child instanceof net.minecraft.client.gui.components.Button button
                     &&(button.getMessage().getString().startsWith("Snapshot capture budget")||button.getMessage().getString().startsWith("Lighting upload budget")))button.onPress();
-            if(ClientConfig.AGGREGATE_BUDGET_MILLIS.get()==capture||ClientConfig.LIGHT_UPLOAD_MILLIS.get()==upload)
+            if(GlobalIlluminationConfig.AGGREGATE_BUDGET_MILLIS.get()==capture||GlobalIlluminationConfig.LIGHT_UPLOAD_MILLIS.get()==upload)
                 throw new IllegalStateException("Visible lighting budget buttons did not change configuration");
-            ClientConfig.AGGREGATE_BUDGET_MILLIS.set(capture);ClientConfig.AGGREGATE_CELLS_PER_TICK.set(cells);
-            ClientConfig.LIGHT_UPLOAD_MILLIS.set(upload);ClientConfig.AGGREGATE_APPLY_SECTIONS.set(16);ClientConfig.LIGHT_UPLOAD_SECTIONS.set(8);
-            ClientConfig.AGGREGATE_BUDGET_MILLIS.save();
+            GlobalIlluminationConfig.AGGREGATE_BUDGET_MILLIS.set(capture);GlobalIlluminationConfig.AGGREGATE_CELLS_PER_TICK.set(cells);
+            GlobalIlluminationConfig.LIGHT_UPLOAD_MILLIS.set(upload);GlobalIlluminationConfig.AGGREGATE_APPLY_SECTIONS.set(16);GlobalIlluminationConfig.LIGHT_UPLOAD_SECTIONS.set(8);
+            GlobalIlluminationConfig.AGGREGATE_BUDGET_MILLIS.save();
             LogUtils.getLogger().info("ASYNC_BUDGET_SUCCESS maxSnapshotCells={} maxAppliedSections={} maxUploadsPerFrame={} buttonsChanged=true",maximumCaptured,maximumApplied,maximumUploads);
         }
         LogUtils.getLogger().info("AGGREGATE_CAPTURE {} far={} peak={} idle={} bounce={} worker={} cache={}",NAMES[stage],Integer.toHexString(far),Integer.toHexString(peak),idle,bounce,worker,cache);
         ticks=0;stage++;
         switch(stage) {
             case 1->cluster(true);
-            case 2->{ClientConfig.AGGREGATE_ENABLED.set(false);ClientConfig.GI_ENABLED.set(true);ClientConfig.GI_BLOCK_LIGHT.set(true);}
-            case 3->ClientConfig.AGGREGATE_ENABLED.set(true);
-            case 4->{ClientConfig.GI_ENABLED.set(false);wall(Blocks.SMOOTH_STONE.defaultBlockState());}
+            case 2->{GlobalIlluminationConfig.AGGREGATE_ENABLED.set(false);GlobalIlluminationConfig.GI_ENABLED.set(true);GlobalIlluminationConfig.GI_BLOCK_LIGHT.set(true);}
+            case 3->GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);
+            case 4->{GlobalIlluminationConfig.GI_ENABLED.set(false);wall(Blocks.SMOOTH_STONE.defaultBlockState());}
             case 5->wall(Blocks.RED_STAINED_GLASS.defaultBlockState());
-            case 6->ClientConfig.AGGREGATE_STRENGTH.set(.9);
-            case 7->{ClientConfig.AGGREGATE_STRENGTH.set(1.0);mc.setScreen(new LightingSettingsScreen(null));}
+            case 6->GlobalIlluminationConfig.AGGREGATE_STRENGTH.set(.9);
+            case 7->{GlobalIlluminationConfig.AGGREGATE_STRENGTH.set(1.0);mc.setScreen(new LightingSettingsScreen(null));}
             default->LogUtils.getLogger().info("AGGREGATE_SUCCESS single/cluster, bounded peak, 30-block reach, 100 idle ticks, disable, wall, glass, in-flight removal and settings");
         }
     }
@@ -163,21 +163,21 @@ public final class AggregateVisualHarness {
     }
     private static int sample(int x,int y,int z) {
         try {
-            var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
+            var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
             return ((WorldLightCache)field.get(null)).aggregates().sample(new BlockPos(X+x,y,Z+z));
         }catch(ReflectiveOperationException ex){throw new IllegalStateException(ex);}
     }
     private static double energy() {
         try {
-            var field=OpenLightRenderer.class.getDeclaredField("INDIRECT");field.setAccessible(true);
-            var grid=((com.cappleapple.openlights.client.scene.IndirectLightCache)field.get(null)).grid();
+            var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("INDIRECT");field.setAccessible(true);
+            var grid=((com.cappleapple.openlights.gi.client.scene.IndirectLightCache)field.get(null)).grid();
             double result=0;
             if(grid!=null)for(int i=0;i<grid.data.length;i+=4)result+=grid.data[i]+grid.data[i+1]+grid.data[i+2];
             return result;
         }catch(ReflectiveOperationException ex){throw new IllegalStateException(ex);}
     }
     private static String worker() {
-        try{var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return ((WorldLightCache)field.get(null)).aggregates().workerThread();}
+        try{var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return ((WorldLightCache)field.get(null)).aggregates().workerThread();}
         catch(ReflectiveOperationException ex){throw new IllegalStateException(ex);}
     }
 }

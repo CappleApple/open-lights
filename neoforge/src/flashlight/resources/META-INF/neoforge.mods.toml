@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="CC BY-NC-SA 4.0 with Additional Permission for Minecraft Modpacks and Servers"
+[[mods]]
+modId="openlights_flashlight"
+version="${version}"
+displayName="Open Lights Flashlight"
+authors="CappleApple"
+description="Handheld Open Lights beam with a rechargeable RF/FE battery. Requires Open Lights on the client and server."
+[[dependencies.openlights_flashlight]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.openlights_flashlight]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.openlights_flashlight]]
+modId="openlights"
+type="required"
+versionRange="[2.0.0,3)"
+ordering="AFTER"
+side="BOTH"

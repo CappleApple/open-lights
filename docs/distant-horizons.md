@@ -1,5 +1,7 @@
 # Distant Horizons
 
+In 2.0, the depth adapter stays in the library for API lights and flashlights. Cached world-lighting modes and GI described below require the separate OL Global Illumination addon. Compatibility reports linked here describe earlier releases.
+
 Open Lights has an optional client adapter for Distant Horizons on Forge 1.20.1 and NeoForge 1.21.1. Install both mods on the client; no integration setting or additional API JAR is needed.
 
 See [1.8.3 verification](verification-1.8.3.md) for validation status and tested DH, renderer and shader-pack versions.

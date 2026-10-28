@@ -1,6 +1,6 @@
 package com.cappleapple.openlights.qa;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -17,7 +17,7 @@ public final class DaylightHarness {
         if(!Boolean.getBoolean("openlights.daylightSmoke"))return;var mc=Minecraft.getInstance();mc.mouseHandler.releaseMouse();org.lwjgl.glfw.GLFW.glfwHideWindow(mc.getWindow().getWindow());
         mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.0);mc.options.pauseOnLostFocus=false;
         if(!loading&&mc.screen instanceof TitleScreen title){loading=true;QaBootstrap.open(title);}
-        if(!started&&mc.player!=null&&mc.screen==null){started=true;ClientConfig.ENABLED.set(false);mc.options.hideGui=true;
+        if(!started&&mc.player!=null&&mc.screen==null){started=true;GlobalIlluminationConfig.ENABLED.set(false);mc.options.hideGui=true;
             var id=mc.player.getUUID();mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayer(id);var w=p.serverLevel();w.setDayTime(6000);p.getAbilities().flying=true;p.onUpdateAbilities();p.teleportTo(w,1155.5,-48,124.5,0,40);});}
         if(started)ticks++;if(stage==4&&ticks>30)mc.stop();
     }
@@ -26,14 +26,14 @@ public final class DaylightHarness {
         if(stage>=2)assertSky();
         Screenshot.grab(mc.gameDirectory,"daylight-"+stage+".png",mc.getMainRenderTarget(),m->{});
         LogUtils.getLogger().info("DAYLIGHT_CAPTURE {} position={} cache={}",stage,mc.player.position(),OpenLightRenderer.cacheStatistics());ticks=0;stage++;
-        switch(stage){case 1->{ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);ClientConfig.WORLD_GRID_SIZE.set(9);ClientConfig.WORLD_SAMPLES_PER_TICK.set(128);}
-            case 2->ClientConfig.WORLD_SAMPLES_PER_TICK.set(32768);
+        switch(stage){case 1->{GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);GlobalIlluminationConfig.WORLD_GRID_SIZE.set(9);GlobalIlluminationConfig.WORLD_SAMPLES_PER_TICK.set(128);}
+            case 2->GlobalIlluminationConfig.WORLD_SAMPLES_PER_TICK.set(32768);
             case 3->{mc.options.entityShadows().set(false);}
-            default->{ClientConfig.WORLD_SAMPLES_PER_TICK.set(4096);ClientConfig.WORLD_GRID_SIZE.set(33);mc.options.entityShadows().set(true);LogUtils.getLogger().info("DAYLIGHT_SUCCESS");}}
+            default->{GlobalIlluminationConfig.WORLD_SAMPLES_PER_TICK.set(4096);GlobalIlluminationConfig.WORLD_GRID_SIZE.set(33);mc.options.entityShadows().set(true);LogUtils.getLogger().info("DAYLIGHT_SUCCESS");}}
     }
     private static void assertSky(){try{
-        var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
-        var grid=((com.cappleapple.openlights.client.scene.WorldLightCache)field.get(null)).grid();
+        var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
+        var grid=((com.cappleapple.openlights.gi.client.scene.WorldLightCache)field.get(null)).grid();
         for(int x=-32;x<=32;x+=32)for(int z=-32;z<=32;z+=32){
             double fx=(1155.5+x-grid.minimumX())/grid.spacing,fy=(-59.45-grid.minimumY())/grid.spacing,fz=(124.5+z-grid.minimumZ())/grid.spacing;
             int ix=(int)Math.floor(fx),iy=(int)Math.floor(fy),iz=(int)Math.floor(fz);fx-=ix;fy-=iy;fz-=iz;

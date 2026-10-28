@@ -6,7 +6,7 @@ modId="openlights"
 version="${version}"
 displayName="Open Lights"
 authors="CappleApple"
-description="Point, spot and area lighting with cached world illumination."
+description="Rendering library for API-provided point, spot and area lights. Adds no items or automatic world lighting."
 [[mixins]]
 config="openlights.mixins.json"
 [[dependencies.openlights]]

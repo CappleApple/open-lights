@@ -7,8 +7,6 @@ import com.cappleapple.openlights.api.client.OpenLightsApi;
 import com.cappleapple.openlights.config.ClientConfig;
 import com.cappleapple.openlights.client.scene.SceneCache;
 import com.cappleapple.openlights.client.scene.SceneSnapshot;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.client.scene.IndirectLightCache;
 import com.cappleapple.openlights.client.scene.LightCoverage;
 import com.cappleapple.openlights.api.client.ShaderCompatibility;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -29,16 +27,16 @@ public final class OpenLightRenderer {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final RenderTargets TARGETS = new RenderTargets();
     private static final SceneCache SCENE = new SceneCache();
-    private static final WorldLightCache WORLD_LIGHT = new WorldLightCache();
-    private static final IndirectLightCache INDIRECT = new IndirectLightCache();
-    private static final ProbeTexture WORLD_TEXTURE = new ProbeTexture(), NEAR_TEXTURE = new ProbeTexture(), GI_TEXTURE = new ProbeTexture();
-    private static final ProbeTexture COLOR_TEXTURE = new ProbeTexture(), NEAR_COLOR_TEXTURE = new ProbeTexture();
-    private static final ProbeTexture FAR_GI_TEXTURE = new ProbeTexture();
-    private static final BlockSectionTexture BLOCK_TEXTURE = new BlockSectionTexture();
-    private static List<LightDefinition> indirectSources = List.of();
-    private static int neutralLightmap, nativeLightmap, skyLightmap;
+    private static WorldLightingExtension WORLD_LIGHTING = WorldLightingExtension.NONE;
+    private static int nativeLightmap;
     private static boolean worldPass, replacementFrame, nativeSkyFrame;
-    private static double worldCacheMillis;
+    /** Internal extension point for separately packaged world-lighting implementations. */
+    public static void installWorldLighting(WorldLightingExtension extension) {
+        if (WORLD_LIGHTING != WorldLightingExtension.NONE) throw new IllegalStateException("World lighting is already installed");
+        WORLD_LIGHTING = Objects.requireNonNull(extension);
+    }
+    public static boolean hasWorldLightingExtension() { return WORLD_LIGHTING != WorldLightingExtension.NONE; }
+    public static boolean hasActiveLighting() { return !FRAME_LIGHTS.isEmpty() || WORLD_LIGHTING.hasWork(); }
     private static long cacheTick;
     /** A monotonic local clock: server time synchronization must not repeatedly discard warmed caches. */
     public static void clientTick() { cacheTick++; }
@@ -76,63 +74,47 @@ public final class OpenLightRenderer {
                                   int snapshotCells, int appliedSections, int discardedJobs,
                                   int lightUploads, boolean lightUploadsPending) {}
     public static CacheStatistics cacheStatistics() {
-        return new CacheStatistics(replacementFrame, WORLD_LIGHT.grid() == null ? 0 : WORLD_LIGHT.grid().populated(),
-                WORLD_LIGHT.grid() == null ? 0 : WORLD_LIGHT.grid().count(),
-                INDIRECT.grid() == null ? 0 : INDIRECT.grid().populated(), INDIRECT.updated(), worldCacheMillis, INDIRECT.millis(),
-                WORLD_LIGHT.updated(), SCENE.updated(), com.cappleapple.openlights.client.scene.ColoredLightCache.INSTANCE.updated(),
-                INDIRECT.far() == null ? 0 : INDIRECT.far().populated(), INDIRECT.far() == null ? 0 : INDIRECT.far().count(),
-                WORLD_LIGHT.blocks().tiles().size(), WORLD_LIGHT.blocks().pending(), WORLD_LIGHT.aggregates().cells(),
-                WORLD_LIGHT.aggregates().updated(), WORLD_LIGHT.aggregates().pending(), WORLD_LIGHT.aggregates().limited(),
-                WORLD_LIGHT.aggregates().workerActive(), WORLD_LIGHT.aggregates().captured(),WORLD_LIGHT.aggregates().applied(),
-                WORLD_LIGHT.aggregates().discarded(),BLOCK_TEXTURE.uploaded(),BLOCK_TEXTURE.pending());
+        return WORLD_LIGHTING.statistics(SCENE.updated());
     }
 
     public static void nativeLightmap(net.minecraft.client.renderer.texture.DynamicTexture texture) {
         nativeLightmap = texture.getId();
-        FirstPersonLighting.palette(texture);
-        if (worldPass && replacementFrame && nativeSkyFrame) {
-            skyLightmap = NativeSkyLightmap.update(texture);
-            if (skyLightmap == 0) nativeSkyFrame = false;
-        }
+        WORLD_LIGHTING.nativeLightmap(texture, worldPass && replacementFrame);
+        nativeSkyFrame = WORLD_LIGHTING.nativeSky();
     }
     public static int worldLightmap() {
-        return worldPass && replacementFrame ? (nativeSkyFrame ? skyLightmap : neutralLightmap) : FirstPersonLighting.texture();
+        if (WORLD_LIGHTING == WorldLightingExtension.NONE) return 0;
+        return !failed && ClientConfig.ENABLED.get() ? WORLD_LIGHTING.worldLightmap(worldPass && replacementFrame) : 0;
     }
     /** Internal diagnostics for the ambient palette used by this world frame. */
     public static boolean nativeSkyLighting() { return replacementFrame && nativeSkyFrame; }
     public static void beginHand() {
-        try {FirstPersonLighting.begin(WORLD_LIGHT,replacementFrame&&!failed&&ClientConfig.ENABLED.get()&&!ShaderCompatibility.isShaderPackInUse());}
-        catch(Exception exception){FirstPersonLighting.end();LOGGER.error("Unable to update first-person lighting",exception);}
+        WORLD_LIGHTING.beginHand(!failed && ClientConfig.ENABLED.get());
     }
-    public static void endHand() {FirstPersonLighting.end();if(nativeLightmap!=0)RenderSystem.setShaderTexture(2,nativeLightmap);}
+    public static void endHand() {
+        WORLD_LIGHTING.endHand();
+        if (nativeLightmap != 0) RenderSystem.setShaderTexture(2, nativeLightmap);
+    }
     public static void beginWorld() {
         worldPass = true; replacementFrame = false; nativeSkyFrame = false;
         Minecraft mc = Minecraft.getInstance();
-        if (!ClientConfig.GI_ENABLED.get() && INDIRECT.grid() != null) INDIRECT.clear();
         if (mc.level == null || failed || !ClientConfig.ENABLED.get() || ShaderCompatibility.isRenderingShadowPass()) return;
         distantDepthMerged = false; distantDepthTexture = 0;
-        DistantHorizonsCompatibility.beginFrame();
-        if (ClientConfig.LIGHTING_MODE.get() == ClientConfig.LightingMode.CACHED && !ShaderCompatibility.isShaderPackInUse()) {
-            long start = System.nanoTime();
-            try {
-                // Take ownership before any geometry, including the first frame after a reload.
-                // Cache population controls quality, never which renderer owns the world.
-                if (lighting == null) try (var ignored = new GlState()) { initialize(); }
-                WORLD_LIGHT.update(mc.level, mc.gameRenderer.getMainCamera().getPosition(), mc.options.getEffectiveRenderDistance(), cacheTick);
-                replacementFrame = true;
-                nativeSkyFrame = DistantHorizonsCompatibility.preserveNativeSky();
-                mc.gameRenderer.lightTexture().turnOnLightLayer();
-            } catch (Exception exception) { fail(exception); }
-            worldCacheMillis = (System.nanoTime() - start) / 1_000_000.0;
-        } else { WORLD_LIGHT.clear(); worldCacheMillis = 0; }
+        if (!FRAME_LIGHTS.isEmpty() || WORLD_LIGHTING.hasWork() || !OpenLightsApi.snapshot().isEmpty()) DistantHorizonsCompatibility.beginFrame();
+        else DistantHorizonsCompatibility.clearFrame();
+        try {
+            WORLD_LIGHTING.beginWorld(cacheTick);
+            replacementFrame = WORLD_LIGHTING.replacement();
+            nativeSkyFrame = WORLD_LIGHTING.nativeSky();
+            if (replacementFrame) mc.gameRenderer.lightTexture().turnOnLightLayer();
+        } catch (Exception exception) { fail(exception); }
     }
     public static void endWorld() {
         worldPass = false;
         if (nativeLightmap != 0) RenderSystem.setShaderTexture(2, nativeLightmap);
     }
     private static boolean hasWork() {
-        return !FRAME_LIGHTS.isEmpty() || replacementFrame || ClientConfig.GI_ENABLED.get()
-                || ClientConfig.LIGHTING_MODE.get() == ClientConfig.LightingMode.CACHED;
+        return !FRAME_LIGHTS.isEmpty() || WORLD_LIGHTING.hasWork();
     }
 
     public static void stage(RenderLevelStageEvent event) {
@@ -187,6 +169,7 @@ public final class OpenLightRenderer {
     }
 
     private static void collect(RenderLevelStageEvent event) {
+        boolean hadLights = !FRAME_LIGHTS.isEmpty();
         FRAME_LIGHTS.clear();
         var gather = new CollectLightsEvent(event.getPartialTick().getGameTimeDeltaPartialTick(false));
         OpenLightsApi.snapshot().forEach(gather::add);
@@ -196,12 +179,7 @@ public final class OpenLightRenderer {
         float maximumRange = ClientConfig.MAX_RANGE.get().floatValue();
         int renderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
         AABB view = LightCoverage.view(camera, LightCoverage.distanceBlocks(renderDistance, ClientConfig.LIGHT_RENDER_DISTANCE.get()));
-        AABB giView = LightCoverage.view(camera, renderDistance * 16.0 + ClientConfig.GI_TRACE_DISTANCE.get());
-        indirectSources = gather.lights().values().stream().filter(light -> light.intensity() > 0)
-                .map(light -> bounded(light, maximumRange))
-                .filter(light -> LightCoverage.bounds(light).intersects(giView))
-                .sorted(Comparator.comparingDouble(light -> light.position().distanceToSqr(camera)))
-                .limit(ClientConfig.GI_SOURCE_LIMIT.get()).toList();
+        WORLD_LIGHTING.collect(gather.lights().values(), camera, renderDistance, maximumRange);
         gather.lights().entrySet().stream()
                 .filter(entry -> entry.getValue().intensity() > 0)
                 .map(entry -> Map.entry(entry.getKey(), bounded(entry.getValue(), maximumRange)))
@@ -213,6 +191,7 @@ public final class OpenLightRenderer {
                 .sorted(Comparator.comparingDouble(entry -> entry.getValue().position().distanceToSqr(camera)))
                 .limit(limit).forEach(entry -> FRAME_LIGHTS.put(entry.getKey(),entry.getValue()));
         SHADOWS.keySet().retainAll(FRAME_LIGHTS.keySet());
+        if (hadLights && FRAME_LIGHTS.isEmpty()) { SCENE.clear(); uploadedRevision=Long.MIN_VALUE; vertexCount=0; }
     }
 
     private static void initialize() throws Exception {
@@ -221,16 +200,6 @@ public final class OpenLightRenderer {
         shadow = new GlProgram("shadow.vsh","shadow.fsh");
         lighting = new GlProgram("fullscreen.vsh","lighting.fsh");
         composite = new GlProgram("fullscreen.vsh","composite.fsh");
-        neutralLightmap = GL11.glGenTextures();
-        texture(0, GL11.GL_TEXTURE_2D, neutralLightmap);
-        // Terrain shaders use texelFetch with integer light coordinates in [0,15].
-        float[] neutral = new float[16 * 16 * 4];
-        Arrays.fill(neutral, 1);
-        try (var ignored = new TextureUploadState()) {
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 16, 16, 0, GL11.GL_RGBA, GL11.GL_FLOAT, neutral);
-        }
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         mediumBuffer=GL15.glGenBuffers();
         GL15.glBindBuffer(GL31.GL_UNIFORM_BUFFER,mediumBuffer);
         GL15.glBufferData(GL31.GL_UNIFORM_BUFFER,1536,GL15.GL_DYNAMIC_DRAW);
@@ -293,15 +262,7 @@ public final class OpenLightRenderer {
         Minecraft mc = Minecraft.getInstance();
         Vec3 camera = event.getCamera().getPosition();
         SceneSnapshot scene = SCENE.update(mc.level,camera,32,List.copyOf(FRAME_LIGHTS.values()),cacheTick);
-        if (ClientConfig.GI_ENABLED.get()) {
-            INDIRECT.update(mc.level, camera, indirectSources, cacheTick, replacementFrame ? WORLD_LIGHT.aggregates() : null);
-            GI_TEXTURE.upload(INDIRECT.grid(), INDIRECT.revision());
-            FAR_GI_TEXTURE.upload(INDIRECT.far(), INDIRECT.revision());
-        } else INDIRECT.clear();
-        WORLD_TEXTURE.upload(WORLD_LIGHT.grid(), WORLD_LIGHT.revision());
-        NEAR_TEXTURE.upload(WORLD_LIGHT.near(), WORLD_LIGHT.revision());
-        COLOR_TEXTURE.upload(WORLD_LIGHT.color(), WORLD_LIGHT.revision());
-        NEAR_COLOR_TEXTURE.upload(WORLD_LIGHT.nearColor(), WORLD_LIGHT.revision());
+        WORLD_LIGHTING.update(mc.level, camera, cacheTick);
         if (uploadedRevision != scene.revision()) {
             float[] vertices = scene.opaqueTriangles();
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER,geometryBuffer);
@@ -381,13 +342,7 @@ public final class OpenLightRenderer {
         lighting.integer("OpaqueDepth",0);lighting.integer("SceneColor",1);lighting.integer("ShadowDepth",2);
         lighting.integer("ReplaceLighting",replacementFrame?1:0);
         lighting.integer("KeepNativeSky",nativeSkyFrame?1:0);
-        WORLD_TEXTURE.bind(lighting, "SkyWorld", 5, WORLD_LIGHT.grid(), scene.origin());
-        NEAR_TEXTURE.bind(lighting, "SkyNear", 6, WORLD_LIGHT.near(), scene.origin());
-        texture(7, GL11.GL_TEXTURE_2D, nativeLightmap);
-        lighting.integer("SkyLightmap",7);
-        GI_TEXTURE.bind(lighting, "Gi", 3, INDIRECT.grid(), scene.origin());
-        FAR_GI_TEXTURE.bind(lighting, "FarGi", 4, INDIRECT.far(), scene.origin());
-        lighting.scalar("GiStrength", ClientConfig.GI_ENABLED.get() ? ClientConfig.GI_STRENGTH.get().floatValue() : 0);
+        WORLD_LIGHTING.bindLighting(lighting, scene.origin(), nativeLightmap);
         lighting.matrix("InverseProjection",new Matrix4f(PROJECTION).invert());
         lighting.matrix("InverseViewRotation",new Matrix4f(VIEW).invert());
         Vec3 cameraLocal=camera.subtract(scene.origin());
@@ -433,15 +388,7 @@ public final class OpenLightRenderer {
         composite.integer("SceneColor",0);composite.integer("LightTexture",1);composite.integer("OpaqueDepth",2);
         composite.integer("ReplaceLighting", replacementFrame ? 1 : 0);
         composite.integer("KeepNativeSky", nativeSkyFrame ? 1 : 0);
-        composite.integer("BlockLightStyle",WORLD_LIGHT.aggregates().analytic()?1:0);
-        composite.scalar("BlockLightIntensity",2f*ClientConfig.INTENSITY_MULTIPLIER.get().floatValue()*ClientConfig.BLOCK_LIGHT_EXPOSURE.get().floatValue());
-        WORLD_TEXTURE.bind(composite, "World", 3, WORLD_LIGHT.grid(), scene.origin());
-        NEAR_TEXTURE.bind(composite, "Near", 5, WORLD_LIGHT.near(), scene.origin());
-        COLOR_TEXTURE.bind(composite, "Color", 6, WORLD_LIGHT.color(), scene.origin());
-        NEAR_COLOR_TEXTURE.bind(composite, "NearColor", 7, WORLD_LIGHT.nearColor(), scene.origin());
-        BLOCK_TEXTURE.bind(composite, WORLD_LIGHT.blocks(), scene.origin());
-        texture(4, GL11.GL_TEXTURE_2D, nativeLightmap);
-        composite.integer("NativeLightmap", 4);
+        WORLD_LIGHTING.bindComposite(composite, scene.origin(), nativeLightmap);
         composite.matrix("InverseProjection", new Matrix4f(PROJECTION).invert());
         composite.matrix("InverseViewRotation", new Matrix4f(VIEW).invert());
         composite.vec3("CameraLocal", (float)cameraLocal.x, (float)cameraLocal.y, (float)cameraLocal.z);
@@ -508,45 +455,27 @@ public final class OpenLightRenderer {
         LOGGER.error("Open Lights disabled its renderer after an error; reload resources to retry",exception);
     }
     public static void invalidate(int minX,int minY,int minZ,int maxX,int maxY,int maxZ) {
-        WORLD_LIGHT.aggregates().invalidate(minX,minY,minZ,maxX,maxY,maxZ);
-        SCENE.invalidateRegion(minX,minY,minZ,maxX,maxY,maxZ);
-        WORLD_LIGHT.invalidateRegion(minX-15,minY-15,minZ-15,maxX+15,maxY+15,maxZ+15);
-        com.cappleapple.openlights.client.scene.ColoredLightCache.INSTANCE.invalidate(minX,minY,minZ,maxX,maxY,maxZ);
-        INDIRECT.invalidateRegion(minX,minY,minZ,maxX,maxY,maxZ,true);
+        if (!FRAME_LIGHTS.isEmpty()) SCENE.invalidateRegion(minX,minY,minZ,maxX,maxY,maxZ);
+        WORLD_LIGHTING.invalidate(minX,minY,minZ,maxX,maxY,maxZ);
     }
 
     public static void invalidateLightSection(net.minecraft.world.level.LightLayer layer, net.minecraft.core.SectionPos section) {
-        int x = section.minBlockX(), y = section.minBlockY(), z = section.minBlockZ();
-        if (layer == net.minecraft.world.level.LightLayer.BLOCK) WORLD_LIGHT.invalidateRegion(x,y,z,x+15,y+15,z+15);
-        else WORLD_LIGHT.invalidateSkyRegion(x,y,z,x+15,y+15,z+15);
-        if (layer == net.minecraft.world.level.LightLayer.BLOCK) {
-            com.cappleapple.openlights.client.scene.ColoredLightCache.INSTANCE.invalidate(x,y,z,x+15,y+15,z+15);
-            WORLD_LIGHT.invalidateRegion(x-15,y-15,z-15,x+30,y+30,z+30);
-        }
-        if (layer == net.minecraft.world.level.LightLayer.BLOCK) INDIRECT.invalidateRegion(x,y,z,x+15,y+15,z+15,false);
+        WORLD_LIGHTING.invalidateLightSection(layer, section);
     }
     public static void clearWorld() {
-        FirstPersonLighting.end();
+        WORLD_LIGHTING.clear();
         FRAME_LIGHTS.clear();SHADOWS.clear();SCENE.clear();OpenLightsApi.clear();
-        WORLD_LIGHT.clear(); INDIRECT.clear(); indirectSources = List.of();
-        com.cappleapple.openlights.client.scene.ColoredLightCache.INSTANCE.clear();
         replacementFrame = false; worldPass = false; nativeSkyFrame = false;
-        NativeSkyLightmap.close(); skyLightmap = 0;
         DistantHorizonsCompatibility.clearFrame();
         distantDepthMerged = false; distantDepthTexture = 0;
         cacheTick = 0;
         uploadedRevision=Long.MIN_VALUE;depthReady=false;matricesReady=false;
     }
     public static void reload() {
-        FirstPersonLighting.close();
+        WORLD_LIGHTING.close();
         clearWorld();TARGETS.close();
-        WORLD_TEXTURE.close(); NEAR_TEXTURE.close(); GI_TEXTURE.close();
-        COLOR_TEXTURE.close(); NEAR_COLOR_TEXTURE.close(); FAR_GI_TEXTURE.close();
-        BLOCK_TEXTURE.close();
         com.cappleapple.openlights.client.scene.TextureColors.clear();
         if (nativeLightmap != 0) RenderSystem.setShaderTexture(2, nativeLightmap);
-        if (neutralLightmap != 0) com.mojang.blaze3d.platform.GlStateManager._deleteTexture(neutralLightmap);
-        neutralLightmap = 0;
         for (GlProgram program:new GlProgram[]{depthCopy,shadow,lighting,composite}) if(program!=null)program.close();
         depthCopy=shadow=lighting=composite=null;
         if(fullScreenVao!=0)GL30.glDeleteVertexArrays(fullScreenVao);

@@ -1,8 +1,10 @@
 package com.cappleapple.openlights.qa;
+import com.cappleapple.openlights.flashlight.FlashlightContent;
 
 import com.cappleapple.openlights.beam.BeamProfiles;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.content.*;
+import com.cappleapple.openlights.gi.content.*;
+import com.cappleapple.openlights.flashlight.FlashlightItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -35,7 +37,7 @@ public final class RemoteHarness {
             require(mc.getSingleplayerServer()==null,"Expected a remote server");require(BeamProfiles.clientRevision()>0,"Profiles did not synchronize at login");
             for(String command:new String[]{"gamemode creative","time set midnight","gamerule doDaylightCycle false","fill -7 160 -2 7 160 18 stone","fill -7 161 18 7 168 18 stone_bricks","tp @s 0.5 161 -1 0 0","setblock 0 162 4 openlights:point_light{Color:3381759,Range:24f,Enabled:1b}","clear @s","give @s openlights:flashlight"})mc.player.connection.sendCommand(command);
         }else if(stage==1){
-            require(mc.player.getMainHandItem().is(ModContent.FLASHLIGHT.get()),"Flashlight inventory not synchronized");
+            require(mc.player.getMainHandItem().is(FlashlightContent.FLASHLIGHT.get()),"Flashlight inventory not synchronized");
             var block=mc.level.getBlockEntity(new BlockPos(0,162,4));require(block instanceof LightSourceBlockEntity light&&light.color()==3381759&&light.enabled(),"Placed light NBT not synchronized");
             mc.gameMode.useItem(mc.player,InteractionHand.MAIN_HAND);
         }else if(stage==2){

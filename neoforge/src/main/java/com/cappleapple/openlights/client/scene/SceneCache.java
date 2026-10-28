@@ -2,7 +2,7 @@ package com.cappleapple.openlights.client.scene;
 
 import com.cappleapple.openlights.config.ClientConfig;
 import com.cappleapple.openlights.api.client.LightDefinition;
-import com.cappleapple.openlights.content.LightSourceBlock;
+import com.cappleapple.openlights.api.client.LightSourceGeometry;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -228,7 +228,7 @@ public final class SceneCache {
                     OpticalMaterials.Properties optical = OpticalMaterials.block(level, position, state);
                     if (optical != null) {
                         for (AABB box : shape.toAabbs()) addMedium(media, box.move(position), optical);
-                    } else if (!(state.getBlock() instanceof LightSourceBlock)
+                    } else if (!(state.getBlock() instanceof LightSourceGeometry)
                             && state.getRenderShape() != RenderShape.INVISIBLE && !shape.isEmpty()) {
                         int faces = TriangleBuilder.ALL;
                         if (Block.isShapeFullBlock(shape)) {
@@ -236,7 +236,7 @@ public final class SceneCache {
                                 neighbor.set(position.getX() + direction.getStepX(),
                                         position.getY() + direction.getStepY(), position.getZ() + direction.getStepZ());
                                 BlockState adjacent = level.getBlockState(neighbor);
-                                if (!adjacent.isAir() && !(adjacent.getBlock() instanceof LightSourceBlock)
+                                if (!adjacent.isAir() && !(adjacent.getBlock() instanceof LightSourceGeometry)
                                         && OpticalMaterials.block(adjacent) == null
                                         && adjacent.getRenderShape() != RenderShape.INVISIBLE
                                         && Block.isShapeFullBlock(adjacent.getShape(level, neighbor))) {

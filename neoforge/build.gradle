@@ -3,17 +3,34 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.143'
 }
 group = 'com.cappleapple.openlights'
-version = '1.8.3'
+version = '2.0.0'
 base.archivesName = 'openlights-neoforge-1.21.1'
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 java.withSourcesJar()
+sourceSets {
+    globalIllumination
+    flashlight
+    splitQa
+}
+['globalIllumination', 'flashlight', 'splitQa'].each { name ->
+    sourceSets[name].compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    sourceSets[name].runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    configurations[name + 'Implementation'].extendsFrom configurations.implementation
+    configurations[name + 'RuntimeOnly'].extendsFrom configurations.runtimeOnly
+}
+sourceSets.test.compileClasspath += sourceSets.globalIllumination.output + sourceSets.flashlight.output
+sourceSets.test.runtimeClasspath += sourceSets.globalIllumination.output + sourceSets.flashlight.output
 neoForge {
     version = '21.1.248'
     runs {
         client { client(); gameDirectory = file('run-client') }
         server { server(); gameDirectory = file('run-server'); programArgument '--nogui' }
     }
-    mods { openlights { sourceSet sourceSets.main } }
+    mods {
+        openlights { sourceSet sourceSets.main }
+        ol_global_illumination { sourceSet sourceSets.globalIllumination }
+        openlights_flashlight { sourceSet sourceSets.flashlight }
+    }
 }
 repositories {
     maven {
@@ -34,18 +51,51 @@ processResources {
     inputs.property 'version', project.version
     filesMatching('META-INF/neoforge.mods.toml') { expand version: project.version }
 }
+['globalIllumination', 'flashlight', 'splitQa'].each { name ->
+    tasks.named(sourceSets[name].processResourcesTaskName, ProcessResources) {
+        inputs.property 'version', project.version
+        filesMatching('META-INF/neoforge.mods.toml') { expand version: project.version }
+    }
+}
+def addonArtifacts = [globalIllumination: 'ol-global-illumination', flashlight: 'open-lights-flashlight']
+addonArtifacts.each { name, artifactName ->
+    tasks.register(name + 'Jar', Jar) {
+        from sourceSets[name].output
+        from('../LICENSE', '../THIRD_PARTY_NOTICES.md')
+        archiveFileName = "${artifactName}-neoforge-1.21.1-${project.version}.jar"
+    }
+    tasks.register(name + 'SourcesJar', Jar) {
+        from sourceSets[name].allSource
+        from('../LICENSE', '../THIRD_PARTY_NOTICES.md')
+        archiveFileName = "${artifactName}-neoforge-1.21.1-${project.version}-sources.jar"
+    }
+}
+tasks.register('splitQaJar', Jar) {
+    from sourceSets.splitQa.output
+    archiveFileName = 'openlights-split-qa-neoforge.jar'
+}
 jar { from('../LICENSE'); from('../THIRD_PARTY_NOTICES.md'); into('licenses') { from '../licenses' } }
 sourcesJar { from('../LICENSE'); from('../THIRD_PARTY_NOTICES.md'); into('licenses') { from '../licenses' } }
 
 sourceSets {
     qa {
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.globalIllumination.output + sourceSets.flashlight.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.globalIllumination.output + sourceSets.flashlight.output
     }
 }
 neoForge {
-    mods { openlightsqa { sourceSet sourceSets.qa } }
+    mods {
+        openlightsqa { sourceSet sourceSets.qa }
+        openlights_split_qa { sourceSet sourceSets.splitQa }
+    }
     runs {
+        splitQa {
+            client()
+            sourceSet = sourceSets.splitQa
+            gameDirectory = file('run-split-qa')
+            loadedMods = [neoForge.mods.openlights, neoForge.mods.openlights_split_qa]
+            programArguments.addAll '--width', '1280', '--height', '800'
+        }
         qa {
             client()
             sourceSet = sourceSets.qa
@@ -61,8 +111,12 @@ tasks.register('qaJar', Jar) {
 }
 
 // QA is never loaded by ordinary development client/server runs.
-neoForge.runs.client.loadedMods = [neoForge.mods.openlights]
-neoForge.runs.server.loadedMods = [neoForge.mods.openlights]
+def developmentMods = [neoForge.mods.openlights]
+if (project.hasProperty('withGI')) developmentMods += neoForge.mods.ol_global_illumination
+if (project.hasProperty('withFlashlight')) developmentMods += neoForge.mods.openlights_flashlight
+neoForge.runs.client.loadedMods = developmentMods
+neoForge.runs.server.loadedMods = developmentMods
+neoForge.runs.qa.loadedMods = [neoForge.mods.openlights, neoForge.mods.ol_global_illumination, neoForge.mods.openlights_flashlight, neoForge.mods.openlightsqa]
 if (project.hasProperty('qaShaders')) {
     neoForge.runs.qa.systemProperty 'openlights.expectShaderPack', 'true'
     dependencies { qaRuntimeOnly fileTree(dir: '.research/shader-mods', include: '*.jar') }
@@ -78,3 +132,5 @@ tasks.register('verifyModJar') {
     }
 }
 tasks.named('build') { dependsOn 'verifyModJar' }
+tasks.named('build') { dependsOn 'globalIlluminationJar', 'flashlightJar', 'globalIlluminationSourcesJar', 'flashlightSourcesJar', 'verifySplitJars' }
+apply from: '../gradle/verify-split.gradle'

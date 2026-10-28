@@ -7,7 +7,7 @@ version="${version}"
 displayName="Open Lights"
 authors="CappleApple"
 displayTest="IGNORE_ALL_VERSION"
-description='''Open-source point, spot and area lighting with shadows, transparent-medium transmission and a public API.'''
+description='''Rendering library for API-provided point, spot and area lights. Adds no items or automatic world lighting. Install Open Lights Flashlight or OL Global Illumination for those features.'''
 [[dependencies.openlights]]
 modId="forge"
 mandatory=true

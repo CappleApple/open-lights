@@ -1,0 +1,10 @@
+{
+  "block.openlights.point_light": "Point Light",
+  "block.openlights.spot_light": "Spot Light",
+  "block.openlights.area_light": "Area Light",
+  "message.openlights.light_on": "Light on",
+  "message.openlights.light_off": "Light off",
+  "message.openlights.range": "Light range: %s blocks",
+  "screen.openlights.title": "OL Global Illumination",
+  "screen.openlights.title.client_only": "OL Global Illumination (client only)"
+}

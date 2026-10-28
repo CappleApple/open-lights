@@ -1,4 +1,5 @@
 package com.cappleapple.openlights.qa;
+import com.cappleapple.openlights.flashlight.FlashlightContent;
 
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
 import com.cappleapple.openlights.client.particle.BeamDustParticles;
@@ -9,11 +10,11 @@ import com.cappleapple.openlights.api.client.LightHandle;
 import com.cappleapple.openlights.api.client.LightKey;
 import com.cappleapple.openlights.client.scene.SceneCache;
 import com.cappleapple.openlights.client.scene.SceneSnapshot;
-import com.cappleapple.openlights.content.FlashlightItem;
-import com.cappleapple.openlights.content.LightShape;
-import com.cappleapple.openlights.content.LightSourceBlock;
-import com.cappleapple.openlights.content.LightSourceBlockEntity;
-import com.cappleapple.openlights.content.ModContent;
+import com.cappleapple.openlights.flashlight.FlashlightItem;
+import com.cappleapple.openlights.gi.content.LightShape;
+import com.cappleapple.openlights.gi.content.LightSourceBlock;
+import com.cappleapple.openlights.gi.content.LightSourceBlockEntity;
+import com.cappleapple.openlights.gi.content.ModContent;
 import com.cappleapple.openlights.api.client.OpenLightsApi;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.CameraType;
@@ -136,18 +137,18 @@ public final class ClientSmokeHarness {
             if (minecraft.level != null && minecraft.player != null
                     && minecraft.getSingleplayerServer() != null && minecraft.screen == null) {
                 minecraft.options.setCameraType(CameraType.FIRST_PERSON);
-                originalMaxLights = com.cappleapple.openlights.config.ClientConfig.MAX_LIGHTS.get();
-                originalMaxShadowLights = com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.get();
-                originalShadowResolution = com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.get();
-                com.cappleapple.openlights.config.ClientConfig.LIGHTING_MODE.set(
-                        com.cappleapple.openlights.config.ClientConfig.LightingMode.CACHED);
-                com.cappleapple.openlights.config.ClientConfig.GI_ENABLED.set(true);
-                com.cappleapple.openlights.config.ClientConfig.PERIODIC_CACHE_REFRESH.set(false);
-                com.cappleapple.openlights.config.ClientConfig.GI_BLOCK_LIGHT.set(true);
-                com.cappleapple.openlights.config.ClientConfig.GI_SPACING.set(8);
-                com.cappleapple.openlights.config.ClientConfig.GI_PROBES_PER_TICK.set(4);
-                com.cappleapple.openlights.config.ClientConfig.GI_BUDGET_MILLIS.set(.5);
-                com.cappleapple.openlights.config.ClientConfig.INTENSITY_MULTIPLIER.set(1.0);
+                originalMaxLights = com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_LIGHTS.get();
+                originalMaxShadowLights = com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.get();
+                originalShadowResolution = com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.get();
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LIGHTING_MODE.set(
+                        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LightingMode.CACHED);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_ENABLED.set(true);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BLOCK_LIGHT.set(true);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_SPACING.set(8);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(4);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(.5);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.INTENSITY_MULTIPLIER.set(1.0);
                 prepareWorld();
                 if (Boolean.getBoolean("openlights.giSmoke")) {
                     begin(Stage.GRAZING_SHADOWS);
@@ -313,19 +314,19 @@ public final class ClientSmokeHarness {
                 preResizeShadowRecord = shadowRecords().get(shadowA.key());
                 begin(Stage.SHADOW_RESIZE_128);
                 shadowB.close();
-                com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.set(128);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.set(128);
             }
             case SHADOW_RESIZE_128 -> {
                 preResizeShadowRecord = shadowRecords().get(shadowA.key());
                 begin(Stage.SHADOW_RESIZE_256);
-                com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.set(256);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.set(256);
             }
             case SHADOW_RESIZE_256 -> {
                 shadowA.close();
                 shadowB.close();
-                com.cappleapple.openlights.config.ClientConfig.MAX_LIGHTS.set(originalMaxLights);
-                com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.set(originalMaxShadowLights);
-                com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.set(originalShadowResolution);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_LIGHTS.set(originalMaxLights);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(originalMaxShadowLights);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.set(originalShadowResolution);
                 begin(Stage.LOPRO_FIRST_PERSON);
                 minecraft.options.setCameraType(CameraType.FIRST_PERSON);
                 useNativeFlashlight(true);
@@ -358,10 +359,10 @@ public final class ClientSmokeHarness {
             case GRAZING_UNSHADOWED -> {
                 apiLight.close();
                 contentAction(player -> player.serverLevel().setBlock(new BlockPos(40,160,4), Blocks.GLOWSTONE.defaultBlockState(), 3));
-                com.cappleapple.openlights.config.ClientConfig.GI_SPACING.set(8);
-                com.cappleapple.openlights.config.ClientConfig.GI_PROBES_PER_TICK.set(64);
-                com.cappleapple.openlights.config.ClientConfig.GI_BUDGET_MILLIS.set(8.0);
-                com.cappleapple.openlights.config.ClientConfig.GI_BLOCK_LIGHT.set(false);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_SPACING.set(8);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(64);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(8.0);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BLOCK_LIGHT.set(false);
                 apiLight = OpenLightsApi.create(ResourceLocation.fromNamespaceAndPath("openlights", "smoke_gi"),
                         new LightDefinition.Point(new Vec3(.5,163.5,4.5), new Vec3(1,0,0), 2, 16, true, 0));
                 begin(Stage.CACHED_GI);
@@ -372,11 +373,11 @@ public final class ClientSmokeHarness {
             }
             case CACHED_IDLE -> {
                 LOGGER.info("SMOKE_CACHE_IDLE 100 ticks with zero world samples, GI probes, scene scans, and shadow passes: {}", OpenLightRenderer.cacheStatistics());
-                com.cappleapple.openlights.config.ClientConfig.INTENSITY_MULTIPLIER.set(0.0);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.INTENSITY_MULTIPLIER.set(0.0);
                 begin(Stage.CACHED_INTENSITY_ZERO);
             }
             case CACHED_INTENSITY_ZERO -> {
-                com.cappleapple.openlights.config.ClientConfig.INTENSITY_MULTIPLIER.set(1.0);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.INTENSITY_MULTIPLIER.set(1.0);
                 begin(Stage.CACHED_INTENSITY_RESTORED);
             }
             case CACHED_INTENSITY_RESTORED -> {
@@ -388,16 +389,16 @@ public final class ClientSmokeHarness {
                 begin(Stage.CACHED_SOURCE_REMOVED);
             }
             case CACHED_SOURCE_REMOVED -> {
-                com.cappleapple.openlights.config.ClientConfig.GI_ENABLED.set(false);
-                com.cappleapple.openlights.config.ClientConfig.LIGHTING_MODE.set(
-                        com.cappleapple.openlights.config.ClientConfig.LightingMode.ADDITIVE);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_ENABLED.set(false);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LIGHTING_MODE.set(
+                        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LightingMode.ADDITIVE);
                 begin(Stage.CACHED_DISABLED);
             }
             case CACHED_DISABLED -> {
-                com.cappleapple.openlights.config.ClientConfig.GI_ENABLED.set(true);
-                com.cappleapple.openlights.config.ClientConfig.GI_BLOCK_LIGHT.set(true);
-                com.cappleapple.openlights.config.ClientConfig.LIGHTING_MODE.set(
-                        com.cappleapple.openlights.config.ClientConfig.LightingMode.CACHED);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_ENABLED.set(true);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BLOCK_LIGHT.set(true);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LIGHTING_MODE.set(
+                        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.LightingMode.CACHED);
                 contentAction(player -> player.serverLevel().setBlock(new BlockPos(0,161,4), Blocks.GLOWSTONE.defaultBlockState(), 3));
                 begin(Stage.CACHED_BLOCK);
             }
@@ -410,9 +411,9 @@ public final class ClientSmokeHarness {
                 contentAction(player -> player.serverLevel().setBlock(new BlockPos(40,160,4), Blocks.AIR.defaultBlockState(), 3));
                 try { if(Files.exists(smokePackDirectory)) removeSmokePack(); }
                 catch (IOException exception) { throw new IllegalStateException("Cannot clean smoke pack", exception); }
-                com.cappleapple.openlights.config.ClientConfig.GI_SPACING.set(8);
-                com.cappleapple.openlights.config.ClientConfig.GI_PROBES_PER_TICK.set(4);
-                com.cappleapple.openlights.config.ClientConfig.GI_BUDGET_MILLIS.set(.5);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_SPACING.set(8);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(4);
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(.5);
                 begin(Stage.FINISHED);
                 if (Boolean.getBoolean("openlights.giSmoke")) {
                     LOGGER.info("GI_SMOKE_SUCCESS verified idle caches, tracing-setting refresh, cached replacement or shader fallback, API and block bounce, propagated world lighting, disable, source removal, and hand lightmap restoration");
@@ -486,7 +487,7 @@ public final class ClientSmokeHarness {
             Map<?, ?> shadows = shadowRecords();
             Object record = shadows.get(selected);
             if (!shadows.keySet().equals(Set.of(selected)) || record == null || stageShadowPasses <= 0
-                    || com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.get() != 1
+                    || com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.get() != 1
                     || OpenLightRenderer.statistics().lights() != (resized ? 1 : 2)
                     || !shadowADefinition.equals(OpenLightRenderer.frameLights().get(shadowA.key()))
                     || targetShadowResolution() != (stage == Stage.SHADOW_RESIZE_128 ? 128 : 256)) return false;
@@ -497,7 +498,7 @@ public final class ClientSmokeHarness {
             ItemStack held = (stage == Stage.NATIVE_HANDHELD_OFFHAND || stage == Stage.NATIVE_HANDHELD_THIRD) ? minecraft.player.getOffhandItem() : minecraft.player.getMainHandItem();
             LightKey key = new LightKey(ResourceLocation.fromNamespaceAndPath("openlights","handheld"), player);
             boolean on = stage != Stage.NATIVE_HANDHELD_OFF;
-            return held.is(ModContent.FLASHLIGHT.get()) && FlashlightItem.isEnabled(held) == on
+            return held.is(FlashlightContent.FLASHLIGHT.get()) && FlashlightItem.isEnabled(held) == on
                     && (on ? OpenLightRenderer.frameLights().size() == 1
                             && OpenLightRenderer.frameLights().get(key) instanceof LightDefinition.Spot
                             && (stage != Stage.NATIVE_HANDHELD_ON || stageShadowPasses > 0)
@@ -535,7 +536,7 @@ public final class ClientSmokeHarness {
             return performanceLights.size() == 8 && OpenLightRenderer.frameLights().size() == 8
                     && OpenLightRenderer.statistics().lights() == 8
                     && performanceLights.stream().allMatch(handle -> OpenLightRenderer.frameLights().containsKey(handle.key()))
-                    && com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.get() == 4;
+                    && com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.get() == 4;
         }
         if (stage == Stage.OCCLUDER_ADDED || stage == Stage.OCCLUDER_REMOVED) {
             boolean adding = stage == Stage.OCCLUDER_ADDED;
@@ -587,7 +588,7 @@ public final class ClientSmokeHarness {
     private static boolean loproCondition(UUID player) {
         Minecraft minecraft = Minecraft.getInstance();
         ItemStack held = minecraft.player.getMainHandItem();
-        if (!held.is(ModContent.FLASHLIGHT.get()) || !FlashlightItem.isEnabled(held) || !profilesSynchronized()) return false;
+        if (!held.is(FlashlightContent.FLASHLIGHT.get()) || !FlashlightItem.isEnabled(held) || !profilesSynchronized()) return false;
         LightDefinition light = OpenLightRenderer.frameLights().get(new LightKey(ResourceLocation.fromNamespaceAndPath("openlights", "handheld"), player));
         if (!(light instanceof LightDefinition.Spot spot)
                 || spot.forward().dot(minecraft.player.getLookAngle()) <= .9) return false;
@@ -784,8 +785,8 @@ public final class ClientSmokeHarness {
     }
 
     private static void createShadowRegressionLights() {
-        com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.set(1);
-        com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.set(256);
+        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(1);
+        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.set(256);
         ResourceLocation owner = ResourceLocation.fromNamespaceAndPath("openlights", "smoke_shadow_regression");
         shadowADefinition = shadowRegressionDefinition(new Vec3(.5,162.5,3.5));
         shadowA = OpenLightsApi.create(owner, shadowADefinition);
@@ -858,10 +859,10 @@ public final class ClientSmokeHarness {
             if (create) {
                 clearNativeContent(player);
                 player.serverLevel().setBlock(new BlockPos(0,162,3), Blocks.AIR.defaultBlockState(), 3);
-                player.getInventory().setItem(0, new ItemStack(ModContent.FLASHLIGHT.get()));
+                player.getInventory().setItem(0, new ItemStack(FlashlightContent.FLASHLIGHT.get()));
             }
             ItemStack stack = player.getMainHandItem();
-            if (!stack.is(ModContent.FLASHLIGHT.get())) throw new IllegalStateException("Native flashlight fixture missing");
+            if (!stack.is(FlashlightContent.FLASHLIGHT.get())) throw new IllegalStateException("Native flashlight fixture missing");
             boolean before = FlashlightItem.isEnabled(stack);
             var result = stack.getItem().use(player.serverLevel(), player, InteractionHand.MAIN_HAND);
             if (!result.getResult().consumesAction() || FlashlightItem.isEnabled(stack) == before) {
@@ -944,7 +945,7 @@ public final class ClientSmokeHarness {
             boolean typeMatches = shape == LightShape.POINT ? light instanceof LightDefinition.Point
                     : shape == LightShape.SPOT ? light instanceof LightDefinition.Spot : light instanceof LightDefinition.Area;
             if (!typeMatches || !light.color().equals(color)
-                    || light.range() != Math.min(expectedRange, com.cappleapple.openlights.config.ClientConfig.MAX_RANGE.get())) return false;
+                    || light.range() != Math.min(expectedRange, com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_RANGE.get())) return false;
         }
         return !enabled || stageShadowPasses > 0;
     }
@@ -988,8 +989,8 @@ public final class ClientSmokeHarness {
     }
 
     private static void createPerformanceLights() {
-        com.cappleapple.openlights.config.ClientConfig.MAX_LIGHTS.set(8);
-        com.cappleapple.openlights.config.ClientConfig.MAX_SHADOW_LIGHTS.set(4);
+        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_LIGHTS.set(8);
+        com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(4);
         resetPerformanceSamples();
         for (int i = 0; i < 8; i++) {
             performanceLights.add(OpenLightsApi.create(ResourceLocation.fromNamespaceAndPath("openlights", "smoke_performance"),
@@ -1000,9 +1001,9 @@ public final class ClientSmokeHarness {
                         + "range=16 rendererTimingOnly=true",
                 GL11.glGetString(GL11.GL_RENDERER), GL11.glGetString(GL11.GL_VENDOR), GL11.glGetString(GL11.GL_VERSION),
                 Minecraft.getInstance().getMainRenderTarget().width, Minecraft.getInstance().getMainRenderTarget().height,
-                com.cappleapple.openlights.config.ClientConfig.RENDER_SCALE.get(),
-                com.cappleapple.openlights.config.ClientConfig.SHADOW_RESOLUTION.get(),
-                com.cappleapple.openlights.config.ClientConfig.VOLUMETRIC_STEPS.get());
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.RENDER_SCALE.get(),
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.SHADOW_RESOLUTION.get(),
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.VOLUMETRIC_STEPS.get());
     }
 
     private static LightDefinition performanceDefinition(int index, double movement) {
@@ -1055,9 +1056,9 @@ public final class ClientSmokeHarness {
                 "SMOKE_CACHE_PERFORMANCE replacement=%s worldCpuMeanPerFrameMs=%.4f worldCpuP95PerFrameMs=%.4f "
                         + "giCpuMeanPerTickMs=%.4f giCpuP95PerTickMs=%.4f giSpacing=%d giProbesPerTick=%d giBudgetMs=%.2f",
                 cache.replacement(), mean(worldCacheSamples), p95(worldCacheSamples), mean(giCacheSamples), p95(giCacheSamples),
-                com.cappleapple.openlights.config.ClientConfig.GI_SPACING.get(),
-                com.cappleapple.openlights.config.ClientConfig.GI_PROBES_PER_TICK.get(),
-                com.cappleapple.openlights.config.ClientConfig.GI_BUDGET_MILLIS.get()));
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_SPACING.get(),
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_PROBES_PER_TICK.get(),
+                com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_BUDGET_MILLIS.get()));
         return true;
     }
 
@@ -1115,9 +1116,9 @@ public final class ClientSmokeHarness {
     /** Check a cell outside the edited block's dirty region, reached by propagated-light notifications. */
     private static boolean worldProbeMatches(BlockPos pos, boolean lit) {
         try {
-            Field field = OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");
+            Field field = com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");
             field.setAccessible(true);
-            var grid = ((com.cappleapple.openlights.client.scene.WorldLightCache)field.get(null)).near();
+            var grid = ((com.cappleapple.openlights.gi.client.scene.WorldLightCache)field.get(null)).near();
             if (grid == null) return false;
             var world = Minecraft.getInstance().level;
             int expected = world.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos);
@@ -1132,8 +1133,8 @@ public final class ClientSmokeHarness {
 
     private static boolean sectionProbeMatches(BlockPos at) {
         try {
-            Field field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
-            var sections=((com.cappleapple.openlights.client.scene.WorldLightCache)field.get(null)).blocks();
+            Field field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);
+            var sections=((com.cappleapple.openlights.gi.client.scene.WorldLightCache)field.get(null)).blocks();
             int x=(at.getX()>>4)-sections.minX,y=(at.getY()>>4)-sections.minY,z=(at.getZ()>>4)-sections.minZ;
             if(x<0||x>=sections.width||y<0||y>=sections.height||z<0||z>=sections.width)return false;
             int page=sections.pages[x+sections.width*(y+sections.height*z)];
@@ -1146,9 +1147,9 @@ public final class ClientSmokeHarness {
 
     private static double indirectEnergy() {
         try {
-            Field field = OpenLightRenderer.class.getDeclaredField("INDIRECT");
+            Field field = com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("INDIRECT");
             field.setAccessible(true);
-            var cache = (com.cappleapple.openlights.client.scene.IndirectLightCache)field.get(null);
+            var cache = (com.cappleapple.openlights.gi.client.scene.IndirectLightCache)field.get(null);
             if (cache.grid() == null) return 0;
             double sum = 0;
             for (int i = 0; i < cache.grid().data.length; i += 4) {

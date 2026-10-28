@@ -1,10 +1,10 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingBudgets;
-import com.cappleapple.openlights.client.LightingSettingsScreen;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingSettingsScreen;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -35,7 +35,7 @@ public final class StyleVisualHarness {
     @SubscribeEvent public static void hand(net.neoforged.neoforge.client.event.RenderHandEvent event) {
         if(!Boolean.getBoolean("openlights.styleSmoke")||(stage!=4&&stage!=5)||ticks<120||event.getHand()!=net.minecraft.world.InteractionHand.MAIN_HAND)return;
         try {
-            var type=Class.forName("com.cappleapple.openlights.client.render.FirstPersonLighting");var field=type.getDeclaredField("texture");field.setAccessible(true);
+            var type=Class.forName("com.cappleapple.openlights.gi.client.render.FirstPersonLighting");var field=type.getDeclaredField("texture");field.setAccessible(true);
             var texture=(net.minecraft.client.renderer.texture.DynamicTexture)field.get(null);
             if(texture==null||com.mojang.blaze3d.systems.RenderSystem.getShaderTexture(2)!=texture.getId())throw new IllegalStateException("Main-hand color lightmap is not bound at stage "+stage);
             int color=texture.getPixels().getPixelRGBA(0,0);
@@ -53,9 +53,9 @@ public final class StyleVisualHarness {
         }
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
         if(!teleported) {
-            teleported=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);ClientConfig.PERIODIC_CACHE_REFRESH.set(false);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);ClientConfig.BLOCK_LIGHT_STYLE.set(openOnly()?ClientConfig.BlockLightStyle.OPEN_LIGHTS:ClientConfig.BlockLightStyle.MINECRAFT);
-            ClientConfig.AGGREGATE_ENABLED.set(true);ClientConfig.AGGREGATE_MULTIPLIER.set(3.0);ClientConfig.AGGREGATE_STRENGTH.set(1.0);LightingBudgets.BALANCED.apply();
+            teleported=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(openOnly()?GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS:GlobalIlluminationConfig.BlockLightStyle.MINECRAFT);
+            GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);GlobalIlluminationConfig.AGGREGATE_MULTIPLIER.set(3.0);GlobalIlluminationConfig.AGGREGATE_STRENGTH.set(1.0);LightingBudgets.BALANCED.apply();
             move(false,false);
         }
         ticks++;
@@ -101,23 +101,23 @@ public final class StyleVisualHarness {
             menuTested=true;button("Lighting update speed").onPress();if(LightingBudgets.current()!=LightingBudgets.FAST)throw new IllegalStateException("Fast preset button failed");
             button("Lighting update speed").onPress();if(LightingBudgets.current()!=LightingBudgets.RAPID)throw new IllegalStateException("Rapid preset button failed");
             if(!openOnly()){
-                button("Block lighting style").onPress();if(ClientConfig.BLOCK_LIGHT_STYLE.get()!=ClientConfig.BlockLightStyle.MINECRAFT)throw new IllegalStateException("Minecraft style button failed");
+                button("Block lighting style").onPress();if(GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.get()!=GlobalIlluminationConfig.BlockLightStyle.MINECRAFT)throw new IllegalStateException("Minecraft style button failed");
                 button("Block lighting style").onPress();
             }return;
         }
-        if(openOnly()&&ClientConfig.BLOCK_LIGHT_STYLE.get()!=ClientConfig.BlockLightStyle.OPEN_LIGHTS)throw new IllegalStateException("Open Lights style changed");
+        if(openOnly()&&GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.get()!=GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS)throw new IllegalStateException("Open Lights style changed");
         Screenshot.grab(mc.gameDirectory,"style-"+captureName()+".png",mc.getMainRenderTarget(),m->{});
         LogUtils.getLogger().info("STYLE_CAPTURE {} settledTicks={} idle={} cache={}",captureName(),settled,idle,stats);
         ticks=0;settled=-1;stage++;
         switch(stage) {
-            case 1->{ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);world().clear();}
+            case 1->{GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);world().clear();}
             case 2->{LightingBudgets.RAPID.apply();world().clear();}
             case 3->wall(false);
             case 4->{wall(true);mc.options.hideGui=false;move(true,false);}
             case 5->move(true,true);
-            case 6->{ClientConfig.BLOCK_LIGHT_STYLE.set(openOnly()?ClientConfig.BlockLightStyle.OPEN_LIGHTS:ClientConfig.BlockLightStyle.MINECRAFT);move(true,false);}
-            case 7->{ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);LightingBudgets.BALANCED.apply();mc.setScreen(new LightingSettingsScreen(null));}
-            default->{LightingBudgets.BALANCED.apply();ClientConfig.BLOCK_LIGHT_STYLE.save();LogUtils.getLogger().info("STYLE_SUCCESS radial falloff, finite-wall shadow, colored item/hand bindings and captures, menu presets and idle; Open Lights only={}",openOnly());}
+            case 6->{GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(openOnly()?GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS:GlobalIlluminationConfig.BlockLightStyle.MINECRAFT);move(true,false);}
+            case 7->{GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);LightingBudgets.BALANCED.apply();mc.setScreen(new LightingSettingsScreen(null));}
+            default->{LightingBudgets.BALANCED.apply();GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.save();LogUtils.getLogger().info("STYLE_SUCCESS radial falloff, finite-wall shadow, colored item/hand bindings and captures, menu presets and idle; Open Lights only={}",openOnly());}
         }
     }
     private static void move(boolean hand,boolean empty) {
@@ -139,5 +139,5 @@ public final class StyleVisualHarness {
     }
     private static int sample(int x,int y,int z){return world().aggregates().sample(new BlockPos(512+x,y,512+z));}
     private static net.minecraft.client.gui.components.Button button(String prefix){return Minecraft.getInstance().screen.children().stream().filter(child->child instanceof net.minecraft.client.gui.components.Button b&&b.getMessage().getString().startsWith(prefix)).map(child->(net.minecraft.client.gui.components.Button)child).findFirst().orElseThrow();}
-    private static WorldLightCache world(){try{var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}catch(ReflectiveOperationException failure){throw new IllegalStateException(failure);}}
+    private static WorldLightCache world(){try{var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}catch(ReflectiveOperationException failure){throw new IllegalStateException(failure);}}
 }

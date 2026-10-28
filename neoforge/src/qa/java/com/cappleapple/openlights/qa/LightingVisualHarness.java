@@ -1,6 +1,6 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
@@ -36,7 +36,7 @@ public final class LightingVisualHarness {
     @SubscribeEvent(priority = net.neoforged.bus.api.EventPriority.LOWEST)
     public static void ownership(net.neoforged.neoforge.client.event.RenderLevelStageEvent e) {
         if (!Boolean.getBoolean("openlights.visualSmoke")
-                || ClientConfig.LIGHTING_MODE.get() != ClientConfig.LightingMode.CACHED) return;
+                || GlobalIlluminationConfig.LIGHTING_MODE.get() != GlobalIlluminationConfig.LightingMode.CACHED) return;
         if (e.getStage() == net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
             int texture = OpenLightRenderer.worldLightmap();
             int bound = com.mojang.blaze3d.systems.RenderSystem.getShaderTexture(2);
@@ -90,8 +90,8 @@ public final class LightingVisualHarness {
             prepared = true;
             originalPacks = java.util.List.copyOf(mc.getResourcePackRepository().getSelectedIds());
             var id = mc.player.getUUID();
-            ClientConfig.GI_ENABLED.set(false); ClientConfig.PERIODIC_CACHE_REFRESH.set(false);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.ADDITIVE);
+            GlobalIlluminationConfig.GI_ENABLED.set(false); GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.ADDITIVE);
             mc.getSingleplayerServer().execute(() -> {
                 var player = mc.getSingleplayerServer().getPlayerList().getPlayer(id);
                 var world = player.serverLevel();
@@ -137,15 +137,15 @@ public final class LightingVisualHarness {
         Screenshot.grab(mc.gameDirectory, "visual-" + NAMES[stage] + ".png", mc.getMainRenderTarget(), m -> {});
         LogUtils.getLogger().info("VISUAL_CAPTURE {} {}", NAMES[stage], OpenLightRenderer.cacheStatistics());
         stage++; ticks = 0;
-        if (stage == 1) ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
+        if (stage == 1) GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
         else if (stage >= 2 && stage <= 4) prepareColors(stage);
         else if (stage == 5) installTexturePack();
         else if (stage == 6) installEmissiveMask();
         else if (stage == 7) {
             mc.options.renderDistance().set(10);
-            ClientConfig.GI_ENABLED.set(true); ClientConfig.GI_PROBES_PER_TICK.set(64); ClientConfig.GI_BUDGET_MILLIS.set(8.0);
+            GlobalIlluminationConfig.GI_ENABLED.set(true); GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(64); GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(8.0);
         } else if (stage == 8) {
-            ClientConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.GI_ENABLED.set(false);
             ready = false;
             mc.getSingleplayerServer().execute(() -> {
                 for (int x = 130; x <= 134; x++) for (int y = 161; y <= 165; y++)
@@ -153,7 +153,7 @@ public final class LightingVisualHarness {
                 ready = true;
             });
         } else if (stage == 9) {
-            ClientConfig.WORLD_SAMPLES_PER_TICK.set(128);
+            GlobalIlluminationConfig.WORLD_SAMPLES_PER_TICK.set(128);
             ready = false;
             var id = mc.player.getUUID();
             mc.getSingleplayerServer().execute(() -> {
@@ -163,7 +163,7 @@ public final class LightingVisualHarness {
                 ready = true;
             });
         } else if (stage == 10) {
-            ClientConfig.WORLD_GRID_SIZE.set(65); mc.options.renderDistance().set(6);
+            GlobalIlluminationConfig.WORLD_GRID_SIZE.set(65); mc.options.renderDistance().set(6);
         } else if (stage == 11) {
             ready = false;
             var id = mc.player.getUUID();
@@ -176,8 +176,8 @@ public final class LightingVisualHarness {
         } else {
             if (incompleteFrames < 100) throw new IllegalStateException("Incomplete-cache ownership was not exercised");
             LogUtils.getLogger().info("CONTINUOUS_OWNERSHIP_SUCCESS frames={} incompleteCacheFrames={}", ownedFrames, incompleteFrames);
-            ClientConfig.WORLD_GRID_SIZE.set(33); ClientConfig.WORLD_SAMPLES_PER_TICK.set(4096);
-            ClientConfig.GI_ENABLED.set(true); ClientConfig.GI_PROBES_PER_TICK.set(4); ClientConfig.GI_BUDGET_MILLIS.set(.5);
+            GlobalIlluminationConfig.WORLD_GRID_SIZE.set(33); GlobalIlluminationConfig.WORLD_SAMPLES_PER_TICK.set(4096);
+            GlobalIlluminationConfig.GI_ENABLED.set(true); GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(4); GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(.5);
             LogUtils.getLogger().info("VISUAL_SUCCESS captures complete; inspect the images before claiming visual correctness");
             ready = false;
             mc.getResourcePackRepository().setSelected(originalPacks);
@@ -245,13 +245,13 @@ public final class LightingVisualHarness {
 
     private static void assertCoverage() {
         try {
-            var worldField = OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT"); worldField.setAccessible(true);
-            var giField = OpenLightRenderer.class.getDeclaredField("INDIRECT"); giField.setAccessible(true);
-            var world = ((com.cappleapple.openlights.client.scene.WorldLightCache)worldField.get(null)).grid();
-            var gi = ((com.cappleapple.openlights.client.scene.IndirectLightCache)giField.get(null)).far();
+            var worldField = com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT"); worldField.setAccessible(true);
+            var giField = com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("INDIRECT"); giField.setAccessible(true);
+            var world = ((com.cappleapple.openlights.gi.client.scene.WorldLightCache)worldField.get(null)).grid();
+            var gi = ((com.cappleapple.openlights.gi.client.scene.IndirectLightCache)giField.get(null)).far();
             var mc = Minecraft.getInstance(); var camera = mc.gameRenderer.getMainCamera().getPosition();
             int distance = mc.options.getEffectiveRenderDistance()*16;
-            for (var grid : new com.cappleapple.openlights.client.scene.ProbeGrid[]{world,gi}) {
+            for (var grid : new com.cappleapple.openlights.gi.client.scene.ProbeGrid[]{world,gi}) {
                 int span = (grid.size-1)*grid.spacing;
                 if (grid.minimumX() > camera.x-distance || grid.minimumX()+span < camera.x+distance
                         || grid.minimumY() > camera.y-distance || grid.minimumY()+span < camera.y+distance

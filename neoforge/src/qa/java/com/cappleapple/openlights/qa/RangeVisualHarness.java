@@ -1,9 +1,9 @@
 package com.cappleapple.openlights.qa;
 
 import com.cappleapple.openlights.api.client.*;
-import com.cappleapple.openlights.client.LightingSettingsScreen;
+import com.cappleapple.openlights.gi.client.LightingSettingsScreen;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -51,9 +51,9 @@ public final class RangeVisualHarness {
             if (!warming) { warming=true; teleport(0.5,174,48.5,30); return; }
             if (++warmTicks<80) return;
             prepared=true;
-            ClientConfig.GI_ENABLED.set(false); ClientConfig.LIGHT_RENDER_DISTANCE.set(0);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);
-            ClientConfig.VOLUMETRIC_STEPS.set(12); ClientConfig.MAX_LIGHTS.set(8); ClientConfig.MAX_SHADOW_LIGHTS.set(4);
+            GlobalIlluminationConfig.GI_ENABLED.set(false); GlobalIlluminationConfig.LIGHT_RENDER_DISTANCE.set(0);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);
+            GlobalIlluminationConfig.VOLUMETRIC_STEPS.set(12); GlobalIlluminationConfig.MAX_LIGHTS.set(8); GlobalIlluminationConfig.MAX_SHADOW_LIGHTS.set(4);
             mc.getSingleplayerServer().execute(() -> {
                 var world=mc.getSingleplayerServer().overworld();
                 world.setDayTime(18000); world.setWeatherParameters(100000,0,false,false);
@@ -117,8 +117,8 @@ public final class RangeVisualHarness {
         switch(stage) {
             case 1 -> lights(true);
             case 2 -> lights(false);
-            case 3 -> ClientConfig.LIGHT_RENDER_DISTANCE.set(2);
-            case 4 -> {ClientConfig.LIGHT_RENDER_DISTANCE.set(0); lights(true);}
+            case 3 -> GlobalIlluminationConfig.LIGHT_RENDER_DISTANCE.set(2);
+            case 4 -> {GlobalIlluminationConfig.LIGHT_RENDER_DISTANCE.set(0); lights(true);}
             case 5 -> teleport(0.5,166,28.5,2);
             case 6 -> teleport(0.5,166,0.5,2);
             case 7 -> {
@@ -130,13 +130,13 @@ public final class RangeVisualHarness {
                 ((Button)entry).onPress();
                 if(!(mc.screen instanceof LightingSettingsScreen)) throw new IllegalStateException("Video settings did not open lighting controls");
                 Button distance=(Button)mc.screen.children().stream().filter(child->child instanceof Button b&&b.getMessage().getString().startsWith("Lighting distance:")).findFirst().orElseThrow(); distance.onPress();
-                if(ClientConfig.LIGHT_RENDER_DISTANCE.get()!=2) throw new IllegalStateException("Distance control failed");
+                if(GlobalIlluminationConfig.LIGHT_RENDER_DISTANCE.get()!=2) throw new IllegalStateException("Distance control failed");
                 for(int i=0;i<9;i++) distance.onPress();
-                if(ClientConfig.LIGHT_RENDER_DISTANCE.get()!=0) throw new IllegalStateException("Distance control did not restore render-distance default");
+                if(GlobalIlluminationConfig.LIGHT_RENDER_DISTANCE.get()!=0) throw new IllegalStateException("Distance control did not restore render-distance default");
             }
             default -> {
                 mc.screen.onClose(); if(mc.screen!=video) throw new IllegalStateException("Settings did not return to video menu");
-                mc.setScreen(null); HANDLES.forEach(LightHandle::close); ClientConfig.GI_ENABLED.set(true);
+                mc.setScreen(null); HANDLES.forEach(LightHandle::close); GlobalIlluminationConfig.GI_ENABLED.set(true);
                 LogUtils.getLogger().info("RANGE_SUCCESS distant Point/Spot/Area, source-centered shadows, optional distance limit, camera crossing and video controls passed; inspect captures");
             }
         }

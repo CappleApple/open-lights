@@ -1,10 +1,20 @@
 # Cached lighting and performance
 
-All settings below are client settings in `config/openlights-client.toml`. They do not change server light levels, spawning, crops, or block emission. The implementation targets Minecraft 1.21.1, NeoForge 21.1.248, and Java 21.
+In 2.0, cached world lighting, aggregation, and indirect bounce require **OL Global Illumination** alongside the Open Lights library. The library and flashlight addon alone do not run these systems. World-lighting settings use `config/ol_global_illumination-client.toml`; analytic rendering settings remain in `config/openlights-client.toml`. The addon also owns the existing point, spot, and area light blocks.
+
+All settings below are client settings. World-lighting keys use `config/ol_global_illumination-client.toml`; shared analytic controls use `config/openlights-client.toml`. They do not change server light levels, spawning, crops, or block emission. The implementation targets Minecraft 1.21.1, NeoForge 21.1.248, and Java 21.
+
+## Placed lights
+
+OL Global Illumination provides `openlights:point_light`, `openlights:spot_light`, and `openlights:area_light`. They appear in Functional Blocks and require the library and GI addon on both client and server. Client-only GI does not make these blocks available.
+
+Use an empty hand to right-click a placed light and toggle it. Sneak-right-click with an empty hand to cycle its stored range through 8, 16, 24, 32, and 48 blocks. Apply a dye to change its color; changing color consumes one dye outside creative mode. New lights start enabled, white, and with a stored range of 24 blocks.
+
+Each placed light submits an analytic source and shares the eight-light/four-shadow limits. The library's `maxRange` caps rendered reach at 24 blocks by default; spot-light profiles can impose a lower limit. These fixtures are separate from automatically discovered emitting blocks.
 
 ## Rendering modes
 
-`lightingMode = "CACHED"` is the default. Without Distant Horizons, it replaces the world lightmap binding with a neutral 16×16 texture during world rendering, then applies cached block/sky lighting in Open Lights' full-resolution composite. Vanilla and modded block lights use one-block-resolution section caches across loaded render distance. Lit sections store colored light in 18³ bricks, including a border for interpolation; unlit sections use only a lookup entry. Blocks do not consume analytic light slots. Cached sky lighting uses a fixed 33³ nearby grid and a second grid across render distance with wider spacing. The original palette supplies sky color, brightness, darkness, night vision, and block-light brightness; emitting textures supply block-light color. Sky interpolation excludes buried solid probes so they do not darken exposed distant terrain.
+`lightingMode = "CACHED"` is the default. Without Distant Horizons, it replaces the world lightmap binding with a neutral 16×16 texture during world rendering, then applies cached block/sky lighting in Open Lights' full-resolution composite. Vanilla and modded block lights use one-block-resolution section caches across loaded render distance. Lit sections store colored light in 18³ bricks, including a border for interpolation; unlit sections use only a lookup entry. Automatically discovered emitting blocks do not consume analytic light slots. Cached sky lighting uses a fixed 33³ nearby grid and a second grid across render distance with wider spacing. The original palette supplies sky color, brightness, darkness, night vision, and block-light brightness; emitting textures supply block-light color. Sky interpolation excludes buried solid probes so they do not darken exposed distant terrain.
 
 With Distant Horizons installed and no active shader pack, cached mode instead uses a sky-only native lightmap: each sky-light row repeats its zero-block-light color across all block-light columns. This preserves per-vertex skylight, ambient occlusion and fog before DH's terrain fades. The composite adds cached block light separately and leaves the ambient scene intact, so already-lit DH color is not shaded a second time. This branch also applies when DH terrain rendering is disabled. DH keeps its own lighting and settings; see the [Distant Horizons guide](../../docs/distant-horizons.md).
 
@@ -24,7 +34,7 @@ Cached direct light modulates estimated surface reflectance rather than adding a
 
 This is a cached approximation: shadows have block resolution, partial geometry is represented by opacity and shared-face masks, and grouped emitters use one center rather than the area renderer's four shadow samples. It does not reproduce every detail of the API renderer's geometry shadow maps or volumetric beams.
 
-`blockLightStyle = "MINECRAFT"` selects the previous propagated appearance. It retains the native lightmap brightness response, colored block light and aggregate reach. Both styles are available in Video Settings → Open Lights. First-person color applies in both; additive/shader-pack mode retains its original hand rendering.
+`blockLightStyle = "MINECRAFT"` selects the previous propagated appearance. It retains the native lightmap brightness response, colored block light and aggregate reach. Both styles are available in Video Settings → OL Global Illumination. First-person color applies in both; additive/shader-pack mode retains its original hand rendering.
 
 Aggregation is enabled by default in cached mode. A local 5×5×5 neighborhood supplies emission power; cube-root growth increases reach with a configurable cap. A 3×3×3 glowstone cluster has roughly 2.8 times the single-source reach after integer quantization. Peak power remains capped. Sources along a long chain or a large lava lake cannot pool unlimited power. Disabling aggregation leaves single-source lighting active in either style.
 
@@ -54,13 +64,13 @@ All keys below are under `[aggregateLight]`:
 | `sourceCacheMiB` | `128` | 0–512 MiB estimated sparse radial-channel storage; zero disables reuse, overflow falls back to a full rebuild |
 | `applySectionsPerTick` | `16` | 1–256 finished texture bricks adopted per client tick |
 
-Video Settings → Open Lights exposes block exposure (0.75–4× presets), source-cache memory (0/32/64/128/256/512 MiB), the toggle, range cap, snapshot-capture presets (0.35 ms/2048 cells, 1 ms/8192 cells, and 2 ms/16384 cells), and upload-time presets (0.25, 0.5, 1, and 2 ms). These budgets change update speed, not settled light quality. Source-list copying, result publication, atlas allocation, and page-table updates also have costs outside these timers; an individual capture or upload can exceed its soft time limit.
+Video Settings → OL Global Illumination exposes block exposure (0.75–4× presets), source-cache memory (0/32/64/128/256/512 MiB), the toggle, range cap, snapshot-capture presets (0.35 ms/2048 cells, 1 ms/8192 cells, and 2 ms/16384 cells), and upload-time presets (0.25, 0.5, 1, and 2 ms). These budgets change update speed, not settled light quality. Source-list copying, result publication, atlas allocation, and page-table updates also have costs outside these timers; an individual capture or upload can exceed its soft time limit.
 
 Reaching `maximumCells` or the snapshot-request limit truncates the worker field. Minecraft style retains ordinary native lighting when its extension is truncated; Open Lights style can omit direct light beyond the cap. Each snapshot holds about 20 KiB of raw cell data. A job retains its starting snapshots plus newly requested sections. Temporary maps, queued paths, completed fields, and texture bricks consume additional memory. The renderer stores native, worker-color and worker-direction RGBA8 atlases; atlas growth temporarily retains both sizes. Initial warmup and large lava regions can therefore cost substantially more than an idle scene.
 
 ### Update speed presets
 
-Video Settings → Open Lights → Lighting update speed cycles through these presets. Manual edits display as Custom.
+Video Settings → OL Global Illumination → Lighting update speed cycles through these presets. Manual edits display as Custom.
 
 | Preset | World/color cells per tick | Snapshot cells / soft ms per tick | Applied sections per tick | Uploaded sections / soft ms per frame |
 | --- | --- | --- | --- | --- |
@@ -73,7 +83,7 @@ Balanced matches the defaults. The worker already runs without a per-tick time t
 
 ## Diffuse GI
 
-GI is disabled by default. Enable `[globalIllumination].enabled` to add indirect bounce lighting; cached direct world lighting remains enabled independently. Saved configurations retain their explicit value.
+The GI addon enables indirect bounce by default. Set `[globalIllumination].enabled = true` to add indirect bounce lighting; cached direct world lighting remains enabled independently. Saved configurations retain their explicit value.
 
 The nearby GI grid is 32 blocks wide. A second 9³ grid covers render distance plus a guard band, blending into the near grid. Both share the same probe-count and time budgets. Each probe traces six axis-aligned rays to collision surfaces. Hits receive light from selected API sources and, optionally, the colored native block-light field. Surface texture averages approximate diffuse reflectance. API visibility walks a bounded segment through block shapes and texture-colored optical media. Results are cached as RGB irradiance and sampled in the lighting shader; GI performs no per-pixel ray tracing.
 
@@ -107,14 +117,14 @@ Color propagation stores at most 131,072 resolved cells and has its own per-tick
 
 ## Settings
 
-These keys are at the TOML root:
+These keys are at the TOML root. `lightRenderDistanceChunks`, `periodicCacheRefresh`, `sceneBlockBudget`, `maxMedia`, `bloomStrength`, and `volumetricSteps` belong to `openlights-client.toml`; the remaining keys in this table belong to `ol_global_illumination-client.toml`.
 
 | Key | Default | Allowed values and cost |
 | --- | --- | --- |
 | `lightingMode` | `"CACHED"` | `CACHED` or `ADDITIVE` |
 | `blockLightExposure` | `2.0` | 0.25–4 brightness multiplier for Open Lights-style cached block light and its GI; does not increase reach or change gameplay light |
 | `blockLightStyle` | `"OPEN_LIGHTS"` | `OPEN_LIGHTS` for cached radial shading and direct shadows; `MINECRAFT` for propagated lightmap-style shading |
-| `lightRenderDistanceChunks` | `0` | 0 follows Minecraft render distance; 1–64 optionally reduces analytic-light viewing distance. Also available under vanilla Video Settings → Open Lights. Source reach and world/GI coverage are unchanged. |
+| `lightRenderDistanceChunks` | `0` | 0 follows Minecraft render distance; 1–64 optionally reduces analytic-light viewing distance. Also available under vanilla Video Settings → OL Global Illumination. Source reach and world/GI coverage are unchanged. |
 | `periodicCacheRefresh` | `false` | Opt-in periodic world/GI/scene safety rescans; default updates only changed inputs and new cells |
 | `worldGridSize` | `33` | 9–65 samples per axis for the distant grid; storage and warmup grow cubically |
 | `worldSamplesPerTick` | `4096` | 128–32768 total samples: half for block-light sections, one quarter each for the nearby and distant grids. Sections can use the whole budget when both grids are clean. |
@@ -132,7 +142,7 @@ These keys belong to `[globalIllumination]`:
 
 | Key | Default | Allowed values and behavior |
 | --- | --- | --- |
-| `enabled` | `false` | Disable to skip GI traces and contribution |
+| `enabled` | `true` | Disable to skip GI traces and contribution |
 | `blockLight` | `true` | Include the cached visual block-light field in bounce estimates |
 | `probeSpacing` | `8` | 2–8 blocks; probe count is `(floor(32 / spacing) + 1)³` |
 | `probesPerTick` | `4` | 1–64 completed probes per tick |
@@ -144,16 +154,15 @@ These keys belong to `[globalIllumination]`:
 
 At defaults, GI contains 125 nearby probes and 729 distant probes. A complete initial sweep needs at least 214 ticks at four probes per tick; near and far work alternate, and an idle grid yields its share. Time and color-propagation limits can extend warmup. Each probe has at most six surface rays plus six visibility segments per selected source. Lower `sourceLimit` limits the worst-case work of a single probe.
 
-Both replacement grids contain 35,937 samples at defaults and share the 4,096-sample budget. Filling their detailed samples therefore takes at least 18 ticks; unresolved colors can extend this. Replacement stays active during that process. A sample checks its cell and six touching cells, skipping unloaded chunks. The 125-sample skylight bootstrap runs only when the distant grid is created or moves, separately from the detailed-sample budget; it never marks detailed work complete. Each grid has a corresponding RGB tint texture. Storage grows cubically with `worldGridSize`; recentering temporarily copies overlapping arrays. Distant GI keeps 729 probes as render distance increases, trading spatial resolution for bounded storage.
+Each replacement grid contains 35,937 samples at defaults. While detailed samples remain pending, each grid receives one quarter of the 4,096-sample budget, or 1,024 samples per tick; the other half is reserved for block-light sections. A complete initial detailed sweep therefore takes at least 36 ticks; unresolved colors can extend this. Replacement stays active during that process. A sample checks its cell and six touching cells, skipping unloaded chunks. The 125-sample skylight bootstrap runs only when the distant grid is created or moves, separately from the detailed-sample budget; it never marks detailed work complete. Each grid has a corresponding RGB tint texture. Storage grows cubically with `worldGridSize`; recentering temporarily copies overlapping arrays. Distant GI keeps 729 probes as render distance increases, trading spatial resolution for bounded storage.
 
 ## Example performance profiles
 
-These are starting configurations, not hardware guarantees or an automatic preset selector. Keep unlisted keys at their defaults. Put root keys before `[globalIllumination]`.
+These are starting configurations, not hardware guarantees. Keep unlisted keys at their defaults.
 
-Minimal extra work, preserving vanilla base shading:
+For minimal added lighting, omit the GI addon. In `config/openlights-client.toml`:
 
 ```toml
-lightingMode = "ADDITIVE"
 maxShadowLights = 1
 shadowResolution = 128
 volumetricSteps = 0
@@ -161,26 +170,14 @@ renderScale = 0.25
 maxMedia = 8
 bloomStrength = 0.0
 sceneBlockBudget = 4096
-
-[globalIllumination]
-enabled = true
-probeSpacing = 8
-probesPerTick = 2
-sourceLimit = 4
-refreshTicks = 40
-budgetMillis = 0.25
 ```
 
-Cached replacement with denser GI and quicker refreshes:
+For cached replacement with denser GI, install OL Global Illumination and put this in `config/ol_global_illumination-client.toml`:
 
 ```toml
 lightingMode = "CACHED"
 worldGridSize = 49
 worldSamplesPerTick = 8192
-maxShadowLights = 4
-shadowResolution = 512
-volumetricSteps = 8
-renderScale = 0.5
 
 [globalIllumination]
 enabled = true
@@ -191,7 +188,7 @@ refreshTicks = 10
 budgetMillis = 1.0
 ```
 
-For the lowest cost, disable GI, use `ADDITIVE`, set `maxShadowLights = 0`, and set `volumetricSteps = 0`. Lowering the source or shadow budgets changes which lights contribute, not just image smoothness.
+For the lowest analytic cost, set `maxShadowLights = 0` and `volumetricSteps = 0` in the library config. Lower source or shadow budgets change which lights contribute. Removing the GI addon removes world-lighting processing entirely.
 
 ## Limitations and diagnostics
 

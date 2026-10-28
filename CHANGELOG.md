@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.0 - 2026-10-28
+
+### Changed
+
+- Open Lights is now a rendering library. Installing it alone adds no flashlight, placed lights, cached world lighting, or GI. Scene scanning and lighting passes start only when another mod submits lights.
+- Cached colored world lighting, aggregation, indirect bounce, placed lights, and their settings move to the separate **OL Global Illumination** addon. Its config is `ol_global_illumination-client.toml`; installing the addon enables indirect bounce by default.
+- The handheld item moves to **Open Lights Flashlight**, which works without GI. Both addons require Open Lights 2.x and keep the existing `openlights:` content IDs.
+
+### Added
+
+- RF/FE item charging for the flashlight, with server-controlled capacity, charge rate, consumption, charge display, and automatic shutoff when empty. New and legacy items without charge start empty; energy requirements can be disabled in the flashlight server config.
+- Independent library/addon build artifacts and package-isolation verification for Forge 1.20.1 and NeoForge 1.21.1.
+
+See [migration notes](docs/migration-2.0.md) before opening an existing world with the new mod selection.
+
 ## 1.8.3 - 2026-10-06
 
 ### Fixed

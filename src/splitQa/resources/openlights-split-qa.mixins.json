@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cappleapple.openlights.splitqa.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "openlights-split-qa.refmap.json",
+  "client": [
+    "WindowMixin",
+    "MouseHandlerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

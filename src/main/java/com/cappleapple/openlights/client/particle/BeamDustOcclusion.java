@@ -1,6 +1,6 @@
 package com.cappleapple.openlights.client.particle;
 
-import com.cappleapple.openlights.content.LightSourceBlock;
+import com.cappleapple.openlights.api.client.LightSourceGeometry;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -48,7 +48,7 @@ final class BeamDustOcclusion {
     private static boolean transmitting(BlockState state) {
         Block block = state.getBlock();
         if (block instanceof TintedGlassBlock) return false;
-        return block instanceof LightSourceBlock || block instanceof HalfTransparentBlock
+        return block instanceof LightSourceGeometry || block instanceof HalfTransparentBlock
                 || block instanceof StainedGlassPaneBlock || block == Blocks.GLASS_PANE
                 || block instanceof IceBlock || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE;
         // Water has an empty block shape. Waterlogged solids retain their shape.

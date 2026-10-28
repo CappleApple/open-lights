@@ -1,0 +1,12 @@
+{
+  "item.openlights.flashlight": "Flashlight",
+  "message.openlights.flashlight_on": "Flashlight on",
+  "message.openlights.flashlight_off": "Flashlight off",
+  "tooltip.openlights.on": "On",
+  "tooltip.openlights.off": "Off",
+  "tooltip.openlights.flashlight_use": "Right-click to toggle",
+  "tooltip.openlights.energy": "%s / %s RF",
+  "tooltip.openlights.energy_required": "Charge in an RF/FE item charger",
+  "tooltip.openlights.energy_free": "Energy use disabled by the server",
+  "message.openlights.flashlight_empty": "Flashlight needs RF/FE power"
+}

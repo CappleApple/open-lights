@@ -4,10 +4,24 @@ plugins {
     id 'org.spongepowered.mixin'
 }
 group = 'com.cappleapple.openlights'
-version = '1.8.3'
+version = '2.0.0'
 base.archivesName = 'openlights-1.20.1'
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 java.withSourcesJar()
+// Addons compile against the library; the library never compiles against addons.
+sourceSets {
+    globalIllumination
+    flashlight
+    splitQa
+}
+['globalIllumination', 'flashlight', 'splitQa'].each { name ->
+    sourceSets[name].compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    sourceSets[name].runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    configurations[name + 'Implementation'].extendsFrom configurations.implementation
+    configurations[name + 'RuntimeOnly'].extendsFrom configurations.runtimeOnly
+}
+sourceSets.test.compileClasspath += sourceSets.globalIllumination.output + sourceSets.flashlight.output
+sourceSets.test.runtimeClasspath += sourceSets.globalIllumination.output + sourceSets.flashlight.output
 minecraft {
     mappings channel: 'official', version: '1.20.1'
 }
@@ -20,10 +34,14 @@ repositories {
     }
 }
 mixin { add sourceSets.main, 'openlights.refmap.json'; config 'openlights.mixins.json' }
+mixin.add sourceSets.globalIllumination, 'ol_global_illumination.refmap.json'
+mixin.add sourceSets.splitQa, 'openlights-split-qa.refmap.json'
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
     compileOnly 'maven.modrinth:distanthorizonsapi:7.2.0'
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    globalIlluminationAnnotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    splitQaAnnotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -31,11 +49,49 @@ tasks.named('processResources', ProcessResources) {
     inputs.property 'version', project.version
     filesMatching('META-INF/mods.toml') { expand version: project.version }
 }
+['globalIllumination', 'flashlight', 'splitQa'].each { name ->
+    tasks.named(sourceSets[name].processResourcesTaskName, ProcessResources) {
+        inputs.property 'version', project.version
+        filesMatching('META-INF/mods.toml') { expand version: project.version }
+    }
+}
+
+def addonArtifacts = [globalIllumination: 'ol-global-illumination', flashlight: 'open-lights-flashlight']
+addonArtifacts.each { name, artifactName ->
+    tasks.register(name + 'Jar', Jar) {
+        from sourceSets[name].output
+        from('LICENSE', 'THIRD_PARTY_NOTICES.md')
+        from('licenses') { into 'licenses' }
+        archiveFileName = "${artifactName}-forge-1.20.1-${project.version}.jar"
+        if (name == 'globalIllumination') manifest.attributes('MixinConfigs': 'ol_global_illumination.mixins.json')
+        exclude { entry -> entry.name.endsWith('.refmap.json') && entry.name != (name == 'globalIllumination' ? 'ol_global_illumination.refmap.json' : '') }
+    }
+    tasks.register(name + 'SourcesJar', Jar) {
+        from sourceSets[name].allSource
+        from('LICENSE', 'THIRD_PARTY_NOTICES.md')
+        archiveFileName = "${artifactName}-forge-1.20.1-${project.version}-sources.jar"
+    }
+}
+tasks.register('splitQaJar', Jar) {
+    from sourceSets.splitQa.output
+    archiveFileName = 'openlights-split-qa-forge.jar'
+    manifest.attributes('MixinConfigs': 'openlights-split-qa.mixins.json')
+    exclude { entry -> entry.name.endsWith('.refmap.json') && entry.name != 'openlights-split-qa.refmap.json' }
+}
+reobf {
+    globalIlluminationJar {}
+    flashlightJar {}
+    splitQaJar {}
+}
+['globalIllumination', 'flashlight', 'splitQa'].each { name ->
+    tasks.named(name + 'Jar') { finalizedBy 'reobf' + name.capitalize() + 'Jar' }
+}
 tasks.named('jar', Jar) {
     from('LICENSE', 'THIRD_PARTY_NOTICES.md')
     from('licenses') { into 'licenses' }
     manifest.attributes('MixinConfigs': 'openlights.mixins.json')
     finalizedBy 'reobfJar'
+    exclude { entry -> entry.name.endsWith('.refmap.json') && entry.name != 'openlights.refmap.json' }
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 tasks.named('test', Test) { useJUnitPlatform() }
@@ -62,6 +118,11 @@ tasks.register('verifyModJar') {
     }
 }
 tasks.named('build') { dependsOn tasks.named('verifyModJar') }
+tasks.named('build') {
+    dependsOn 'globalIlluminationJar', 'flashlightJar', 'globalIlluminationSourcesJar', 'flashlightSourcesJar', 'verifySplitJars'
+}
+
+apply from: 'gradle/verify-split.gradle'
 
 
 

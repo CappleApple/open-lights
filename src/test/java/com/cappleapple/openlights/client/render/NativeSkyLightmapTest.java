@@ -1,4 +1,4 @@
-package com.cappleapple.openlights.client.render;
+package com.cappleapple.openlights.gi.client.render;
 
 import org.junit.jupiter.api.Test;
 

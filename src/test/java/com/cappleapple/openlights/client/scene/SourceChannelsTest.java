@@ -1,4 +1,4 @@
-package com.cappleapple.openlights.client.scene;
+package com.cappleapple.openlights.gi.client.scene;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;

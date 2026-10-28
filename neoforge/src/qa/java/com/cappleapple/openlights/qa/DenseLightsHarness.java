@@ -1,10 +1,10 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingBudgets;
-import com.cappleapple.openlights.client.LightingSettingsScreen;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingSettingsScreen;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -41,7 +41,7 @@ public final class DenseLightsHarness {
         mc.options.getSoundSourceOptionInstance(SoundSource.MASTER).set(0.0);mc.mouseHandler.releaseMouse();GLFW.glfwHideWindow(mc.getWindow().getWindow());
         if(!loading&&mc.screen instanceof TitleScreen title){loading=true;mc.options.renderDistance().set(6);mc.options.simulationDistance().set(5);mc.options.framerateLimit().set(60);mc.options.hideGui=true;mc.options.fov().set(70);QaBootstrap.open(title);}
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
-        if(!moved){moved=true;ClientConfig.ENABLED.set(true);ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);ClientConfig.AGGREGATE_ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);ClientConfig.PERIODIC_CACHE_REFRESH.set(false);ClientConfig.BLOOM_STRENGTH.set(0.0);ClientConfig.INTENSITY_MULTIPLIER.set(1.0);if(!baseline()){ClientConfig.BLOCK_LIGHT_EXPOSURE.set(2.0);ClientConfig.SOURCE_CACHE_MIB.set(128);}LightingBudgets.BALANCED.apply();
+        if(!moved){moved=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);GlobalIlluminationConfig.INTENSITY_MULTIPLIER.set(1.0);if(!baseline()){GlobalIlluminationConfig.BLOCK_LIGHT_EXPOSURE.set(2.0);GlobalIlluminationConfig.SOURCE_CACHE_MIB.set(128);}LightingBudgets.BALANCED.apply();
             mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());p.setGameMode(GameType.SPECTATOR);p.teleportTo(p.serverLevel(),512.5,165,497.5,0,4);});}
         ticks++;
         if(!prepared&&ticks>100&&mc.level.hasChunk(33,33)){prepared=true;mc.getSingleplayerServer().execute(()->{
@@ -73,10 +73,10 @@ public final class DenseLightsHarness {
         }else if(stage==5&&a.revision()>revision&&!s.aggregatePending()&&!s.lightUploadsPending()){
             report("place");capture("dense-replaced");stage=6;ticks=idle=0;
         }else if(stage==6&&idle>=100){
-            LogUtils.getLogger().info("DENSE_IDLE 100 ticks frames={} meanRendererGpuMs={} meanRendererCpuMs={} cache={}",frames,gpu/frames,cpu/frames,s);ClientConfig.GI_ENABLED.set(true);ClientConfig.GI_PROBES_PER_TICK.set(64);ClientConfig.GI_BUDGET_MILLIS.set(8.0);stage=7;ticks=idle=0;
+            LogUtils.getLogger().info("DENSE_IDLE 100 ticks frames={} meanRendererGpuMs={} meanRendererCpuMs={} cache={}",frames,gpu/frames,cpu/frames,s);GlobalIlluminationConfig.GI_ENABLED.set(true);GlobalIlluminationConfig.GI_PROBES_PER_TICK.set(64);GlobalIlluminationConfig.GI_BUDGET_MILLIS.set(8.0);stage=7;ticks=idle=0;
         }else if(stage==7&&ticks>300&&idle>=20){
             capture("dense-gi");LogUtils.getLogger().info("DENSE_GI frames={} meanRendererGpuMs={} cache={}",giFrames,giGpu/giFrames,s);
-            if(!baseline()){mc.options.hideGui=false;mc.setScreen(new LightingSettingsScreen(null));button("Block exposure").onPress();if(ClientConfig.BLOCK_LIGHT_EXPOSURE.get()!=3.0)throw new IllegalStateException("Exposure control failed");button("Source cache").onPress();if(ClientConfig.SOURCE_CACHE_MIB.get()!=256)throw new IllegalStateException("Cache control failed");}
+            if(!baseline()){mc.options.hideGui=false;mc.setScreen(new LightingSettingsScreen(null));button("Block exposure").onPress();if(GlobalIlluminationConfig.BLOCK_LIGHT_EXPOSURE.get()!=3.0)throw new IllegalStateException("Exposure control failed");button("Source cache").onPress();if(GlobalIlluminationConfig.SOURCE_CACHE_MIB.get()!=256)throw new IllegalStateException("Cache control failed");}
             stage=8;ticks=0;
         }else if(stage==8&&ticks>20){
             if(!baseline())capture("dense-settings");LogUtils.getLogger().info("DENSE_SUCCESS sources={} baseline={}; cold, placement, removal, idle, GI and menu",count,baseline());stage=9;ticks=0;
@@ -87,5 +87,5 @@ public final class DenseLightsHarness {
     private static void edit(boolean on){var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->mc.getSingleplayerServer().overworld().setBlock(EDIT,(on?Blocks.END_ROD:Blocks.AIR).defaultBlockState(),3));}
     private static void capture(String name){var mc=Minecraft.getInstance();Screenshot.grab(mc.gameDirectory,name+".png",mc.getMainRenderTarget(),m->{});}
     private static Button button(String name){return Minecraft.getInstance().screen.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().startsWith(name)).map(c->(Button)c).findFirst().orElseThrow();}
-    private static WorldLightCache world(){try{var f=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");f.setAccessible(true);return (WorldLightCache)f.get(null);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
+    private static WorldLightCache world(){try{var f=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");f.setAccessible(true);return (WorldLightCache)f.get(null);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
 }

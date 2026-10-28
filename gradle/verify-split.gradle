@@ -1,0 +1,53 @@
+// Enforce physical addon isolation in the shipped artifacts.
+tasks.register('verifySplitJars') {
+    def forgeBuild = project.plugins.hasPlugin('net.minecraftforge.gradle')
+    dependsOn(forgeBuild ? ['reobfJar', 'reobfGlobalIlluminationJar', 'reobfFlashlightJar'] : ['jar', 'globalIlluminationJar', 'flashlightJar'])
+    doLast {
+        def artifacts = [main: tasks.jar, globalIllumination: tasks.globalIlluminationJar, flashlight: tasks.flashlightJar]
+        def entries = [:]
+        artifacts.each { name, task ->
+            new java.util.zip.ZipFile(task.archiveFile.get().asFile).withCloseable { zip ->
+                entries[name] = zip.entries().toList().findAll { !it.directory }.collect { it.name }.toSet()
+                def metadata = forgeBuild ? 'META-INF/mods.toml' : 'META-INF/neoforge.mods.toml'
+                if (!entries[name].contains(metadata)) throw new GradleException("Missing metadata in ${name}")
+                def expected = [main: 'openlights', globalIllumination: 'ol_global_illumination', flashlight: 'openlights_flashlight'][name]
+                if (!zip.getInputStream(zip.getEntry(metadata)).getText('UTF-8').contains('modId="' + expected + '"')) {
+                    throw new GradleException("Wrong mod identity in ${name}")
+                }
+                if (entries[name].any { it.contains('/qa/') || it.contains('/splitqa/') || it.contains('/smoke/') }) {
+                    throw new GradleException("QA code leaked into ${name}")
+                }
+                def allowedRefmap = [main: 'openlights.refmap.json', globalIllumination: 'ol_global_illumination.refmap.json', flashlight: ''][name]
+                if (entries[name].any { it.endsWith('.refmap.json') && it != allowedRefmap }) {
+                    throw new GradleException("Foreign Mixin refmap leaked into ${name}")
+                }
+            }
+        }
+        def classes = entries.collectEntries { name, files -> [(name): files.findAll { it.endsWith('.class') }.toSet()] }
+        def packages = classes.collectEntries { name, files -> [(name): files.collect { it.substring(0, it.lastIndexOf('/')) }.toSet()] }
+        artifacts.keySet().each { a ->
+            artifacts.keySet().findAll { it != a }.each { b ->
+                if (!classes[a].intersect(classes[b]).empty) throw new GradleException("Duplicate runtime classes: ${a}/${b}")
+                if (!packages[a].intersect(packages[b]).empty) throw new GradleException("Split Java packages: ${a}/${b}")
+            }
+        }
+        if (entries.main.any { it.startsWith('data/') || it.contains('/content/Flashlight') || it.contains('/content/LightSource') }) {
+            throw new GradleException('Native content leaked into the library')
+        }
+        // Class constants contain JVM internal names for bytecode dependencies.
+        new java.util.zip.ZipFile(tasks.jar.archiveFile.get().asFile).withCloseable { zip ->
+            if (forgeBuild) {
+                def shadowClass = zip.getEntry('com/cappleapple/openlights/mixin/LightTextureMixin.class')
+                def shadowBytes = new String(zip.getInputStream(shadowClass).bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                if (!shadowBytes.contains('f_109870_')) throw new GradleException('Forge library was not reobfuscated: LightTexture shadow field')
+            }
+            zip.entries().toList().findAll { it.name.endsWith('.class') }.each { entry ->
+                def bytes = new String(zip.getInputStream(entry).bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                (classes.globalIllumination + classes.flashlight).each { addonClass ->
+                    def internalName = addonClass.substring(0, addonClass.length() - 6)
+                    if (bytes.contains(internalName)) throw new GradleException("Library ${entry.name} references addon ${addonClass}")
+                }
+            }
+        }
+    }
+}

@@ -7,8 +7,7 @@
     "LevelRendererMixin",
     "LightTextureMixin",
     "ClientChunkCacheMixin",
-    "GameRendererMixin",
-    "MultiPlayerGameModeMixin"
+    "GameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

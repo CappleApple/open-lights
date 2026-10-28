@@ -11,7 +11,7 @@ import net.neoforged.fml.common.Mod;
 public final class QaBootstrap {
     public static void open(Screen parent) {
         var mc=Minecraft.getInstance();
-        if (com.cappleapple.openlights.config.ClientConfig.GI_ENABLED.get()) throw new IllegalStateException("GI should default off in a fresh config");
+        if (com.cappleapple.openlights.gi.config.GlobalIlluminationConfig.GI_ENABLED.get()) throw new IllegalStateException("GI should default off in a fresh config");
         com.mojang.logging.LogUtils.getLogger().info("DEFAULT_GI_OFF_VERIFIED");
         if(new java.io.File(mc.gameDirectory,"saves/SmokeWorld/level.dat").exists()) {
             mc.createWorldOpenFlows().openWorld("SmokeWorld", ()->mc.setScreen(parent));

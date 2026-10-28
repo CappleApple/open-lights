@@ -1,5 +1,7 @@
 # Beam profiles
 
+In 2.0, profile synchronization stays in the Open Lights library. The handheld item requires Open Lights Flashlight; placed spot lights require OL Global Illumination. Their profile IDs and datapack paths remain unchanged.
+
 Server beam profiles synchronize only when the server also has Open Lights. Client-only connections use built-in profile defaults for client API lights; Open Lights flashlight items and placeable lights are unavailable there.
 
 Open Lights reads beam appearance from server configuration and datapacks. The server sends the resolved profiles to clients when they join and after `/reload`.

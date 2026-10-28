@@ -1,0 +1,7 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+[[mods]]
+modId="openlights_split_qa"
+version="1"
+displayName="Open Lights Split QA (development only)"

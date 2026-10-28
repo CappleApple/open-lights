@@ -11,11 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-final class GlProgram implements AutoCloseable {
-    final int id;
+public final class GlProgram implements AutoCloseable {
+    public final int id;
     private final Map<String, Integer> uniforms = new HashMap<>();
 
-    GlProgram(String vertex, String fragment) throws IOException {
+    public GlProgram(String vertex, String fragment) throws IOException {
         int vs = compile(GL20.GL_VERTEX_SHADER, vertex);
         int fs = 0;
         int program = 0;
@@ -56,15 +56,15 @@ final class GlProgram implements AutoCloseable {
         return shader;
     }
 
-    void bind() { GL20.glUseProgram(id); }
+    public void bind() { GL20.glUseProgram(id); }
     private int location(String name) { return uniforms.computeIfAbsent(name, key -> GL20.glGetUniformLocation(id, key)); }
-    void integer(String name, int value) { GL20.glUniform1i(location(name), value); }
-    void scalar(String name, float value) { GL20.glUniform1f(location(name), value); }
-    void vec2(String name, float x, float y) { GL20.glUniform2f(location(name), x, y); }
-    void vec3(String name, float x, float y, float z) { GL20.glUniform3f(location(name), x, y, z); }
-    void vectors(String name, float[] values) { GL20.glUniform4fv(location(name), values); }
-    void matrices(String name, float[] values) { GL20.glUniformMatrix4fv(location(name), false, values); }
-    void matrix(String name, Matrix4f value) {
+    public void integer(String name, int value) { GL20.glUniform1i(location(name), value); }
+    public void scalar(String name, float value) { GL20.glUniform1f(location(name), value); }
+    public void vec2(String name, float x, float y) { GL20.glUniform2f(location(name), x, y); }
+    public void vec3(String name, float x, float y, float z) { GL20.glUniform3f(location(name), x, y, z); }
+    public void vectors(String name, float[] values) { GL20.glUniform4fv(location(name), values); }
+    public void matrices(String name, float[] values) { GL20.glUniformMatrix4fv(location(name), false, values); }
+    public void matrix(String name, Matrix4f value) {
         try (var stack = MemoryStack.stackPush()) {
             GL20.glUniformMatrix4fv(location(name), false, value.get(stack.mallocFloat(16)));
         }

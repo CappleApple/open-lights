@@ -13,12 +13,12 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-final class OpticalMaterials {
-    record Properties(Vec3 tint, float throughput, float density) {}
+public final class OpticalMaterials {
+    public record Properties(Vec3 tint, float throughput, float density) {}
     private static final Properties CLEAR = new Properties(new Vec3(.96, .985, 1), .97F, 2.50F);
     private static final Properties ICE = new Properties(new Vec3(.72, .88, 1), .90F, 2.30F);
 
-    static Properties block(BlockState state) {
+    public static Properties block(BlockState state) {
         Block block = state.getBlock();
         // Tinted glass deliberately blocks light, despite its glass superclass.
         if (block instanceof TintedGlassBlock) return null;
@@ -31,12 +31,12 @@ final class OpticalMaterials {
         return null;
     }
 
-    static Properties block(ClientLevel level, BlockPos pos, BlockState state) {
+    public static Properties block(ClientLevel level, BlockPos pos, BlockState state) {
         Properties optical = block(state);
         return optical == null ? null : new Properties(TextureColors.transmission(level, pos, state), optical.throughput(), optical.density());
     }
 
-    static Properties water(ClientLevel level, BlockPos position) {
+    public static Properties water(ClientLevel level, BlockPos position) {
         Vec3 color = TextureColors.water(level, position);
         double red = color.x, green = color.y, blue = color.z;
         double brightest = Math.max(.001, Math.max(red, Math.max(green, blue)));

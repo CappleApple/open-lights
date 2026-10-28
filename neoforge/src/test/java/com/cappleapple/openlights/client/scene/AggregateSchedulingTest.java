@@ -1,4 +1,4 @@
-package com.cappleapple.openlights.client.scene;
+package com.cappleapple.openlights.gi.client.scene;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.BlockPos;

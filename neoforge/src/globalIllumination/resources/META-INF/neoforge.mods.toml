@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="CC BY-NC-SA 4.0 with Additional Permission for Minecraft Modpacks and Servers"
+[[mods]]
+modId="ol_global_illumination"
+version="${version}"
+displayName="OL Global Illumination"
+authors="CappleApple"
+description="Cached colored block lighting, source aggregation, indirect bounce lighting and placeable lights for Open Lights."
+[[mixins]]
+config="ol_global_illumination.mixins.json"
+[[dependencies.ol_global_illumination]]
+modId="openlights"
+type="required"
+versionRange="[2.0.0,3)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.ol_global_illumination]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.ol_global_illumination]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"

@@ -1,9 +1,9 @@
 package com.cappleapple.openlights.qa;
 
-import com.cappleapple.openlights.client.LightingBudgets;
+import com.cappleapple.openlights.gi.client.LightingBudgets;
 import com.cappleapple.openlights.client.render.OpenLightRenderer;
-import com.cappleapple.openlights.client.scene.WorldLightCache;
-import com.cappleapple.openlights.config.ClientConfig;
+import com.cappleapple.openlights.gi.client.scene.WorldLightCache;
+import com.cappleapple.openlights.gi.config.GlobalIlluminationConfig;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
@@ -45,11 +45,11 @@ public final class ContrastVisualHarness {
         }
         if(mc.player==null||mc.getSingleplayerServer()==null)return;
         if(!moved) {
-            moved=true;ClientConfig.ENABLED.set(true);ClientConfig.GI_ENABLED.set(false);
-            ClientConfig.BLOCK_LIGHT_STYLE.set(ClientConfig.BlockLightStyle.OPEN_LIGHTS);
-            ClientConfig.LIGHTING_MODE.set(ClientConfig.LightingMode.CACHED);ClientConfig.AGGREGATE_ENABLED.set(true);
-            ClientConfig.INTENSITY_MULTIPLIER.set(2.0);ClientConfig.BLOOM_STRENGTH.set(0.0);
-            ClientConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
+            moved=true;GlobalIlluminationConfig.ENABLED.set(true);GlobalIlluminationConfig.GI_ENABLED.set(false);
+            GlobalIlluminationConfig.BLOCK_LIGHT_STYLE.set(GlobalIlluminationConfig.BlockLightStyle.OPEN_LIGHTS);
+            GlobalIlluminationConfig.LIGHTING_MODE.set(GlobalIlluminationConfig.LightingMode.CACHED);GlobalIlluminationConfig.AGGREGATE_ENABLED.set(true);
+            GlobalIlluminationConfig.INTENSITY_MULTIPLIER.set(2.0);GlobalIlluminationConfig.BLOOM_STRENGTH.set(0.0);
+            GlobalIlluminationConfig.PERIODIC_CACHE_REFRESH.set(false);LightingBudgets.RAPID.apply();
             var id=mc.player.getUUID();mc.getSingleplayerServer().execute(()->{
                 var p=mc.getSingleplayerServer().getPlayerList().getPlayer(id);p.setGameMode(GameType.SPECTATOR);
                 p.teleportTo(p.serverLevel(),512.5,164,505.5,0,0);
@@ -119,7 +119,7 @@ public final class ContrastVisualHarness {
         }catch(java.io.IOException failure){throw new IllegalStateException(failure);}
     }
     private static WorldLightCache world() {
-        try{var field=OpenLightRenderer.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}
+        try{var field=com.cappleapple.openlights.gi.client.render.GlobalIlluminationLighting.class.getDeclaredField("WORLD_LIGHT");field.setAccessible(true);return (WorldLightCache)field.get(null);}
         catch(ReflectiveOperationException failure){throw new IllegalStateException(failure);}
     }
 }
